@@ -1,6 +1,7 @@
 """Authentication API endpoints"""
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from app.database import supabase, supabase_public
@@ -88,9 +89,22 @@ async def login(request: LoginRequest):
             },
         )
     except Exception as e:
+        # Extract more detailed error message from Supabase
+        error_message = str(e)
+        if hasattr(e, 'message'):
+            error_message = e.message
+        elif hasattr(e, 'args') and len(e.args) > 0:
+            error_message = str(e.args[0])
+        
+        # Check for common Supabase errors
+        if "email" in error_message.lower() and "confirm" in error_message.lower():
+            error_message = "Please confirm your email address before signing in. Check your inbox for a confirmation email."
+        elif "invalid" in error_message.lower() or "credentials" in error_message.lower():
+            error_message = "Invalid email or password"
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Login failed: {str(e)}",
+            detail=f"Login failed: {error_message}",
         )
 
 
@@ -132,18 +146,35 @@ async def register(request: RegisterRequest):
 
 
 @router.get("/google/authorize")
-async def google_authorize():
-    """Initiate Google OAuth flow"""
-    redirect_uri = settings.GOOGLE_REDIRECT_URI
-    flow = get_google_flow(redirect_uri)
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true',
-        prompt='consent',
-    )
-    
-    # Store state in session/cookie (simplified - in production use proper session management)
-    return {"url": authorization_url, "state": state}
+async def google_authorize(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())
+):
+    """Initiate Google OAuth flow - requires authentication"""
+    try:
+        # Get authenticated user
+        user = get_current_user(credentials.credentials)
+        user_id = user.id
+        
+        redirect_uri = settings.GOOGLE_REDIRECT_URI
+        flow = get_google_flow(redirect_uri)
+        
+        # Generate state and encode user_id in it
+        import base64
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent',
+        )
+        # Append encoded user_id to state
+        encoded_user_id = base64.urlsafe_b64encode(user_id.encode()).decode()
+        authorization_url = authorization_url.replace(f"state={state}", f"state={state}:{encoded_user_id}")
+        
+        return {"url": authorization_url, "state": f"{state}:{encoded_user_id}"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication required: {str(e)}"
+        )
 
 
 @router.get("/google/callback")
@@ -153,27 +184,62 @@ async def google_callback(code: str, state: Optional[str] = None):
         redirect_uri = settings.GOOGLE_REDIRECT_URI
         flow = get_google_flow(redirect_uri)
         
+        # Extract user_id from state if present (format: "state:encoded_user_id")
+        user_id = None
+        if state and ':' in state:
+            parts = state.split(':', 1)
+            if len(parts) == 2:
+                import base64
+                try:
+                    user_id = base64.urlsafe_b64decode(parts[1].encode()).decode()
+                except Exception:
+                    pass  # If decoding fails, user_id stays None
+        
         # Exchange authorization code for tokens
         flow.fetch_token(code=code)
         credentials = flow.credentials
 
-        # Get user info from Google
-        service = build('oauth2', 'v2', credentials=credentials)
-        user_info = service.userinfo().get().execute()
-        google_email = user_info.get('email')
-
-        # Find or create user in Supabase
-        # Note: This is simplified - in production, you'd want to link Google account to existing user
-        # or create a new user account
+        # Validate that we have user_id from state
+        if not user_id:
+            return RedirectResponse(
+                url=f"{settings.CORS_ORIGINS[0]}/dashboard?error=user_id_required_please_reconnect"
+            )
         
-        # For now, we'll need the user to be authenticated first
-        # This endpoint should be called after user is logged in
-        # We'll store the OAuth tokens for the authenticated user
+        # Store OAuth tokens
+        from app.agents.perception.calendar_ingestion import store_oauth_tokens
+        
+        access_token = credentials.token
+        refresh_token = credentials.refresh_token
+        expires_in = None
+        if credentials.expiry:
+            expires_in = int((credentials.expiry - datetime.utcnow()).total_seconds())
+        
+        # Store tokens
+        try:
+            await store_oauth_tokens(
+                user_id=user_id,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_in=expires_in
+            )
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"OAuth tokens stored successfully for user {user_id}")
+        except Exception as storage_error:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to store OAuth tokens: {str(storage_error)}")
+            return RedirectResponse(
+                url=f"{settings.CORS_ORIGINS[0]}/dashboard?error=token_storage_failed"
+            )
         
         return RedirectResponse(
             url=f"{settings.CORS_ORIGINS[0]}/dashboard?google_connected=true"
         )
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"OAuth callback error: {str(e)}")
         return RedirectResponse(
             url=f"{settings.CORS_ORIGINS[0]}/dashboard?error={str(e)}"
         )
@@ -182,10 +248,22 @@ async def google_callback(code: str, state: Optional[str] = None):
 def get_current_user(token: str):
     """Validate JWT token and return user"""
     try:
-        # Verify token with Supabase
-        response = supabase.auth.get_user(token)
+        # Verify token with Supabase using public client
+        # get_user validates the JWT token and returns the user
+        response = supabase_public.auth.get_user(token)
+        if not response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+            )
         return response.user
-    except Exception:
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Token validation error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",

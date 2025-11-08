@@ -46,7 +46,8 @@ export default function DashboardPage() {
     try {
       setLoading(true)
       const response = await apiClient.getRawTasks()
-      setTasks(response.tasks || [])
+      // Backend returns a list directly, not wrapped in an object
+      setTasks(Array.isArray(response) ? response : response.tasks || [])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks')
     } finally {
@@ -57,6 +58,17 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/auth/login')
+  }
+
+  const handleConnectGoogle = async () => {
+    try {
+      setError(null)
+      const { url } = await apiClient.getGoogleAuthUrl()
+      // Open OAuth URL in same window
+      window.location.href = url
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to connect Google Calendar')
+    }
   }
 
   const handleSync = async () => {
@@ -96,14 +108,22 @@ export default function DashboardPage() {
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <div className="rounded-lg bg-white p-6 shadow">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Calendar Integration</h2>
-            <p className="text-sm text-gray-600 mb-4">Sync your Google Calendar events</p>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              {syncing ? 'Syncing...' : 'Sync Calendar'}
-            </button>
+            <p className="text-sm text-gray-600 mb-4">Connect and sync your Google Calendar events</p>
+            <div className="space-y-2">
+              <button
+                onClick={handleConnectGoogle}
+                className="w-full rounded-md bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              >
+                Connect Google Calendar
+              </button>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {syncing ? 'Syncing...' : 'Sync Calendar'}
+              </button>
+            </div>
           </div>
           
           {metrics && (

@@ -58,7 +58,7 @@ async def get_raw_tasks(
                 created_at=datetime.fromisoformat(task_data["created_at"].replace("Z", "+00:00")),
             ))
         
-        return {"tasks": tasks}
+        return tasks
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

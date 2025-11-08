@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
+import { createClient } from './supabase/client'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -15,11 +16,15 @@ class ApiClient {
 
     // Add request interceptor to include auth token
     this.client.interceptors.request.use(
-      (config) => {
-        // Get token from localStorage or cookies
-        const token = this.getToken()
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
+      async (config) => {
+        try {
+          // Get token from Supabase session
+          const token = await this.getToken()
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+          }
+        } catch (error) {
+          console.error('Error getting auth token:', error)
         }
         return config
       },
@@ -32,25 +37,30 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
           // Handle token refresh or redirect to login
-          this.handleUnauthorized()
+          await this.handleUnauthorized()
         }
         return Promise.reject(error)
       }
     )
   }
 
-  private getToken(): string | null {
+  private async getToken(): Promise<string | null> {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token')
+      // Get token from Supabase session
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      return session?.access_token || null
     }
     return null
   }
 
-  private handleUnauthorized(): void {
+  private async handleUnauthorized(): Promise<void> {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token')
+      // Sign out from Supabase
+      const supabase = createClient()
+      await supabase.auth.signOut()
       window.location.href = '/auth/login'
     }
   }
@@ -61,8 +71,10 @@ class ApiClient {
       email,
       password,
     })
-    if (response.data.token && typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', response.data.token)
+    // Backend returns 'access_token', not 'token'
+    const token = response.data.access_token || response.data.token
+    if (token && typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token)
     }
     return response.data
   }
