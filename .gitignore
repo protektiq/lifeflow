@@ -51,3 +51,7 @@ logs/
 *.tmp
 *.temp
 
+# ChromaDB local storage
+chroma_db/
+backend/chroma_db/
+

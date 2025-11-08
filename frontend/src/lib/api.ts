@@ -104,6 +104,74 @@ class ApiClient {
     return response.data
   }
 
+  async updateTaskFlags(taskId: string, flags: { is_critical?: boolean; is_urgent?: boolean }) {
+    const response = await this.client.patch(`/api/tasks/raw/${taskId}`, flags)
+    return response.data
+  }
+
+  // Energy Level endpoints
+  async createEnergyLevel(date: string, energyLevel: number) {
+    const response = await this.client.post('/api/energy-level', {
+      date,
+      energy_level: energyLevel,
+    })
+    return response.data
+  }
+
+  async getEnergyLevels(params?: { start_date?: string; end_date?: string }) {
+    const response = await this.client.get('/api/energy-level', { params })
+    return response.data
+  }
+
+  async getEnergyLevelForDate(date: string) {
+    const response = await this.client.get(`/api/energy-level/${date}`)
+    return response.data
+  }
+
+  // Plan endpoints
+  async generatePlan(planDate: string) {
+    const response = await this.client.post('/api/plans/generate', {
+      plan_date: planDate,
+    })
+    return response.data
+  }
+
+  async getPlanForDate(date: string) {
+    const response = await this.client.get(`/api/plans/${date}`)
+    return response.data
+  }
+
+  async getPlans(params?: { start_date?: string; end_date?: string }) {
+    const response = await this.client.get('/api/plans', { params })
+    return response.data
+  }
+
+  async updatePlanStatus(planId: string, status: string) {
+    const response = await this.client.put(`/api/plans/${planId}?status=${status}`)
+    return response.data
+  }
+
+  // Feedback endpoints
+  async markTaskDone(taskId: string, planId?: string) {
+    const response = await this.client.post(`/api/feedback/task/${taskId}/done`, {
+      plan_id: planId || null,
+    })
+    return response.data
+  }
+
+  async snoozeTask(taskId: string, durationMinutes: number, planId?: string) {
+    const response = await this.client.post(`/api/feedback/task/${taskId}/snooze`, {
+      duration_minutes: durationMinutes,
+      plan_id: planId || null,
+    })
+    return response.data
+  }
+
+  async getTaskFeedback(taskId: string) {
+    const response = await this.client.get(`/api/feedback/task/${taskId}`)
+    return response.data
+  }
+
   // Health check
   async healthCheck() {
     const response = await this.client.get('/api/health')

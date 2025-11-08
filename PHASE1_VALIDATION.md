@@ -8,7 +8,7 @@ This guide walks you through completing the remaining validation steps for LifeF
 - [x] Frontend running on port 3000
 - [x] User account created and logged in
 - [x] Authentication working (403 errors resolved)
-- [ ] Google OAuth credentials configured
+- [X] Google OAuth credentials configured
 - [ ] Supabase migration executed
 - [ ] Calendar sync tested
 - [ ] Accuracy validated

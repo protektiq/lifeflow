@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/src/lib/api'
 import { RawTask } from '@/src/types/task'
+import { DailyPlan, EnergyLevel } from '@/src/types/plan'
 import { createClient } from '@/src/lib/supabase/client'
+import EnergyLevelInput from '@/components/EnergyLevelInput'
+import DailyPlanView from '@/components/DailyPlanView'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -15,11 +18,26 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [metrics, setMetrics] = useState<any>(null)
+  const [dailyPlan, setDailyPlan] = useState<DailyPlan | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel | null>(null)
+  // Get today's date in local timezone (not UTC)
+  const [today] = useState(() => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    console.log('Today date calculated:', dateStr, 'Local date:', now.toLocaleDateString())
+    return dateStr
+  })
 
   useEffect(() => {
     checkUser()
     loadTasks()
     loadMetrics()
+    loadDailyPlan()
+    loadEnergyLevel()
   }, [])
 
   const checkUser = async () => {
@@ -82,6 +100,60 @@ export default function DashboardPage() {
     } finally {
       setSyncing(false)
     }
+  }
+
+  const loadDailyPlan = async () => {
+    try {
+      setPlanLoading(true)
+      console.log('Loading plan for date:', today)
+      const plan = await apiClient.getPlanForDate(today)
+      console.log('Plan loaded:', plan ? `Plan for ${plan.plan_date}` : 'No plan found')
+      setDailyPlan(plan)
+    } catch (err) {
+      // Plan might not exist yet
+      console.log('Error loading plan:', err)
+      setDailyPlan(null)
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  const loadEnergyLevel = async () => {
+    try {
+      const energy = await apiClient.getEnergyLevelForDate(today)
+      setEnergyLevel(energy)
+    } catch (err) {
+      // Energy level might not exist yet
+      setEnergyLevel(null)
+    }
+  }
+
+  const handleGeneratePlan = async () => {
+    try {
+      setPlanLoading(true)
+      setError(null)
+      await apiClient.generatePlan(today)
+      await loadDailyPlan()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to generate plan')
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  const handleUpdateTaskFlags = async (taskId: string, flags: { is_critical?: boolean; is_urgent?: boolean }) => {
+    try {
+      await apiClient.updateTaskFlags(taskId, flags)
+      await loadTasks()
+      await loadDailyPlan() // Reload plan to reflect changes
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update task flags')
+    }
+  }
+
+  const handleEnergyLevelSaved = () => {
+    loadEnergyLevel()
+    loadDailyPlan() // Regenerate plan with new energy level
   }
 
   return (
@@ -151,6 +223,20 @@ export default function DashboardPage() {
           )}
         </div>
 
+        <div className="mb-6 grid gap-6 md:grid-cols-2">
+          <EnergyLevelInput
+            date={today}
+            initialEnergyLevel={energyLevel?.energy_level}
+            onSuccess={handleEnergyLevelSaved}
+          />
+          <DailyPlanView
+            plan={dailyPlan}
+            onRegenerate={handleGeneratePlan}
+            loading={planLoading}
+            expectedDate={today}
+          />
+        </div>
+
         {error && (
           <div className="mb-4 rounded-md bg-red-50 p-4">
             <p className="text-sm text-red-800">{error}</p>
@@ -177,7 +263,19 @@ export default function DashboardPage() {
                 <div key={task.id} className="px-6 py-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-sm font-medium text-gray-900">{task.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-gray-900">{task.title}</h3>
+                        {task.is_critical && (
+                          <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
+                            Critical
+                          </span>
+                        )}
+                        {task.is_urgent && (
+                          <span className="rounded-full bg-orange-600 px-2 py-0.5 text-xs font-medium text-white">
+                            Urgent
+                          </span>
+                        )}
+                      </div>
                       {task.description && (
                         <p className="mt-1 text-sm text-gray-600">{task.description}</p>
                       )}
@@ -195,6 +293,30 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
+                    </div>
+                    <div className="ml-4 flex flex-col gap-2">
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={task.is_critical}
+                          onChange={(e) =>
+                            handleUpdateTaskFlags(task.id, { is_critical: e.target.checked })
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-gray-700">Critical</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={task.is_urgent}
+                          onChange={(e) =>
+                            handleUpdateTaskFlags(task.id, { is_urgent: e.target.checked })
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                        />
+                        <span className="text-gray-700">Urgent</span>
+                      </label>
                     </div>
                   </div>
                 </div>
