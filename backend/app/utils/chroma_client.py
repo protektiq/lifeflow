@@ -4,12 +4,22 @@ from chromadb.config import Settings
 from typing import List, Optional
 from app.config import settings
 import uuid
+import os
 
 # Initialize Chroma client
-chroma_client = chromadb.HttpClient(
-    host=settings.CHROMA_HOST,
-    port=settings.CHROMA_PORT,
-)
+# Use PersistentClient for local storage (no separate server needed)
+# Use HttpClient if CHROMA_MODE is "http" (requires separate Chroma server)
+if settings.CHROMA_MODE == "http":
+    chroma_client = chromadb.HttpClient(
+        host=settings.CHROMA_HOST,
+        port=settings.CHROMA_PORT,
+    )
+else:
+    # Create directory if it doesn't exist
+    os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
+    chroma_client = chromadb.PersistentClient(
+        path=settings.CHROMA_PERSIST_DIRECTORY,
+    )
 
 # Collection name for calendar events
 COLLECTION_NAME = "calendar_events"

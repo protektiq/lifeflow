@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { apiClient } from '@/src/lib/api'
+import { createClient } from '@/src/lib/supabase/client'
 import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
+  const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,8 +19,19 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      await apiClient.login(email, password)
-      router.push('/dashboard')
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (authError) {
+        throw authError
+      }
+
+      if (data.user) {
+        router.push('/dashboard')
+        router.refresh()
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -29,8 +41,16 @@ export default function LoginPage() {
 
   const handleGoogleAuth = async () => {
     try {
-      const { url } = await apiClient.getGoogleAuthUrl()
-      window.location.href = url
+      const { data, error: authError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      })
+
+      if (authError) {
+        throw authError
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Google authentication failed')
     }

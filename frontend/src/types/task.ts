@@ -10,6 +10,8 @@ export interface RawTask {
   location: string | null
   recurrence_pattern: string | null
   extracted_priority: string | null
+  is_critical: boolean
+  is_urgent: boolean
   created_at: string
 }
 

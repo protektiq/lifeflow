@@ -19,6 +19,8 @@ class RawTask(BaseModel):
     location: Optional[str] = None
     recurrence_pattern: Optional[str] = None
     extracted_priority: Optional[str] = None
+    is_critical: bool = False
+    is_urgent: bool = False
     raw_data: dict  # Original event data as JSON
     created_at: datetime
     
@@ -40,6 +42,8 @@ class RawTaskCreate(BaseModel):
     location: Optional[str] = None
     recurrence_pattern: Optional[str] = None
     extracted_priority: Optional[str] = None
+    is_critical: bool = False
+    is_urgent: bool = False
     raw_data: dict
 
 
@@ -56,5 +60,7 @@ class RawTaskResponse(BaseModel):
     location: Optional[str] = None
     recurrence_pattern: Optional[str] = None
     extracted_priority: Optional[str] = None
+    is_critical: bool = False
+    is_urgent: bool = False
     created_at: datetime
 

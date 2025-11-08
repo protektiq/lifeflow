@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
+import { createClient } from './supabase/client'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -15,11 +16,15 @@ class ApiClient {
 
     // Add request interceptor to include auth token
     this.client.interceptors.request.use(
-      (config) => {
-        // Get token from localStorage or cookies
-        const token = this.getToken()
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
+      async (config) => {
+        try {
+          // Get token from Supabase session
+          const token = await this.getToken()
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+          }
+        } catch (error) {
+          console.error('Error getting auth token:', error)
         }
         return config
       },
@@ -32,25 +37,30 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
           // Handle token refresh or redirect to login
-          this.handleUnauthorized()
+          await this.handleUnauthorized()
         }
         return Promise.reject(error)
       }
     )
   }
 
-  private getToken(): string | null {
+  private async getToken(): Promise<string | null> {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token')
+      // Get token from Supabase session
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      return session?.access_token || null
     }
     return null
   }
 
-  private handleUnauthorized(): void {
+  private async handleUnauthorized(): Promise<void> {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token')
+      // Sign out from Supabase
+      const supabase = createClient()
+      await supabase.auth.signOut()
       window.location.href = '/auth/login'
     }
   }
@@ -61,8 +71,10 @@ class ApiClient {
       email,
       password,
     })
-    if (response.data.token && typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', response.data.token)
+    // Backend returns 'access_token', not 'token'
+    const token = response.data.access_token || response.data.token
+    if (token && typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token)
     }
     return response.data
   }
@@ -89,6 +101,74 @@ class ApiClient {
   // Task endpoints
   async getRawTasks(params?: { start_date?: string; end_date?: string }) {
     const response = await this.client.get('/api/tasks/raw', { params })
+    return response.data
+  }
+
+  async updateTaskFlags(taskId: string, flags: { is_critical?: boolean; is_urgent?: boolean }) {
+    const response = await this.client.patch(`/api/tasks/raw/${taskId}`, flags)
+    return response.data
+  }
+
+  // Energy Level endpoints
+  async createEnergyLevel(date: string, energyLevel: number) {
+    const response = await this.client.post('/api/energy-level', {
+      date,
+      energy_level: energyLevel,
+    })
+    return response.data
+  }
+
+  async getEnergyLevels(params?: { start_date?: string; end_date?: string }) {
+    const response = await this.client.get('/api/energy-level', { params })
+    return response.data
+  }
+
+  async getEnergyLevelForDate(date: string) {
+    const response = await this.client.get(`/api/energy-level/${date}`)
+    return response.data
+  }
+
+  // Plan endpoints
+  async generatePlan(planDate: string) {
+    const response = await this.client.post('/api/plans/generate', {
+      plan_date: planDate,
+    })
+    return response.data
+  }
+
+  async getPlanForDate(date: string) {
+    const response = await this.client.get(`/api/plans/${date}`)
+    return response.data
+  }
+
+  async getPlans(params?: { start_date?: string; end_date?: string }) {
+    const response = await this.client.get('/api/plans', { params })
+    return response.data
+  }
+
+  async updatePlanStatus(planId: string, status: string) {
+    const response = await this.client.put(`/api/plans/${planId}?status=${status}`)
+    return response.data
+  }
+
+  // Feedback endpoints
+  async markTaskDone(taskId: string, planId?: string) {
+    const response = await this.client.post(`/api/feedback/task/${taskId}/done`, {
+      plan_id: planId || null,
+    })
+    return response.data
+  }
+
+  async snoozeTask(taskId: string, durationMinutes: number, planId?: string) {
+    const response = await this.client.post(`/api/feedback/task/${taskId}/snooze`, {
+      duration_minutes: durationMinutes,
+      plan_id: planId || null,
+    })
+    return response.data
+  }
+
+  async getTaskFeedback(taskId: string) {
+    const response = await this.client.get(`/api/feedback/task/${taskId}`)
     return response.data
   }
 

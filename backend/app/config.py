@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     # Chroma Configuration
     CHROMA_HOST: str = "localhost"
     CHROMA_PORT: int = 8000
+    CHROMA_PERSIST_DIRECTORY: str = "./chroma_db"  # Local storage directory
+    CHROMA_MODE: str = "persistent"  # "persistent" or "http" (http requires separate server)
     
     # Database Configuration
     DATABASE_URL: str = ""

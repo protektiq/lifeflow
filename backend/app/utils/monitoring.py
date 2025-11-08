@@ -160,14 +160,27 @@ def track_ingestion(func):
 
 
 def error_handler(func):
-    """Decorator for error handling"""
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        try:
-            return await func(*args, **kwargs)
-        except Exception as e:
-            StructuredLogger.log_error(e, context={"function": func.__name__})
-            raise
+    """Decorator for error handling - handles both sync and async functions"""
+    import inspect
     
-    return wrapper
+    if inspect.iscoroutinefunction(func):
+        # Function is async, wrap with async wrapper
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                StructuredLogger.log_error(e, context={"function": func.__name__})
+                raise
+        return async_wrapper
+    else:
+        # Function is sync, wrap with sync wrapper
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                StructuredLogger.log_error(e, context={"function": func.__name__})
+                raise
+        return sync_wrapper
 
