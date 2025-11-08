@@ -39,10 +39,10 @@ graph TB
     GoogleOAuth -->|OAuth Tokens| OAuthDB[(🔑 OAuth Tokens<br/>Supabase)]
 
     %% Calendar Sync Workflow
-    SyncAPI -->|Trigger| Workflow[🔄 LangGraph Workflow]
+    SyncAPI -->|Trigger| Workflow{{🔄 LangGraph Workflow}}
     Workflow -->|1. Auth Node| VerifyCreds[✓ Verify Credentials<br/>from OAuth DB]
     VerifyCreds -->|2. Ingestion Node| GoogleAPI[📅 Google Calendar API<br/>Fetch Events]
-    GoogleAPI -->|Calendar Events| ExtractNode[3. Extraction Node<br/>NLP Task Extraction]
+    GoogleAPI -->|Calendar Events| ExtractNode{{3. Extraction Node<br/>NLP Task Extraction}}
     ExtractNode -->|Raw Tasks| StoreNode[4. Storage Node<br/>Save to Database]
     StoreNode -->|5. Encoding Node| Chroma[(🧠 Chroma Vector DB<br/>Context Embeddings)]
     StoreNode -->|Tasks| TasksDB[(📝 Raw Tasks<br/>Supabase)]
@@ -51,10 +51,10 @@ graph TB
     EnergyAPI -->|Store| EnergyDB[(⚡ Energy Levels<br/>Supabase)]
 
     %% Plan Generation Flow
-    PlanAPI -->|Trigger| PlanWorkflow[📋 Planning Workflow]
+    PlanAPI -->|Trigger| PlanWorkflow{{📋 Planning Workflow}}
     PlanWorkflow -->|Fetch Tasks| TasksDB
     PlanWorkflow -->|Fetch Energy| EnergyDB
-    PlanWorkflow -->|AI Planning| OpenAI[🤖 OpenAI API<br/>Generate Plan]
+    PlanWorkflow -->|AI Planning| OpenAI{{🤖 OpenAI API<br/>Generate Plan}}
     OpenAI -->|Daily Plan| PlansDB[(📅 Daily Plans<br/>Supabase)]
 
     %% Task Management Flow
@@ -75,19 +75,21 @@ graph TB
     classDef userClass fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef apiClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef dbClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef agentClass fill:#fff9c4,stroke:#f57f17,stroke-width:3px
     classDef workflowClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
     classDef externalClass fill:#ffebee,stroke:#b71c1c,stroke-width:2px
 
     class User userClass
     class Frontend,SyncAPI,EnergyAPI,PlanAPI,TaskAPI,FeedbackAPI apiClass
     class TasksDB,PlansDB,EnergyDB,FeedbackDB,OAuthDB dbClass
-    class Workflow,PlanWorkflow,VerifyCreds,ExtractNode,StoreNode workflowClass
-    class GoogleAPI,OpenAI,Chroma,Auth,GoogleOAuth externalClass
+    class Workflow,ExtractNode,PlanWorkflow,OpenAI agentClass
+    class VerifyCreds,StoreNode workflowClass
+    class GoogleAPI,Chroma,Auth,GoogleOAuth externalClass
 ```
 
 ### 🤖 Understanding Agents in the System
 
-In the Data Flow Diagram above, **agents** are AI-powered components that make intelligent decisions and process information autonomously. Here's how to identify them:
+In the Data Flow Diagram above, **agents** are AI-powered components that make intelligent decisions and process information autonomously. **Agents are visually distinguished by their hexagon shape** (similar to how databases use cylinders). Here's how to identify them:
 
 #### **Agent Components** (AI-Powered):
 
@@ -122,6 +124,8 @@ In the Data Flow Diagram above, **agents** are AI-powered components that make i
 
 **Agents** = Components that use AI/ML to make decisions, understand context, and adapt their behavior  
 **Non-Agents** = Components that follow fixed rules, store data, or provide simple services
+
+**Visual Identification**: In the diagram above, agents appear as **hexagons** (🟡 yellow/gold color), databases appear as **cylinders** (🟣 purple), APIs appear as **rectangles** (🟠 orange), and workflows appear as **rectangles** (🟢 green).
 
 The agents work together to create an intelligent system that learns from your behavior and adapts to your needs over time.
 
