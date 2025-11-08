@@ -19,6 +19,104 @@ LifeFlow acts as your personal executive function assistant, helping you:
 
 ---
 
+## 🔄 Data Flow
+
+LifeFlow processes data through several interconnected workflows. Here's how information flows through the system:
+
+```mermaid
+graph TB
+    %% User Actions
+    User[👤 User] -->|Sign Up/Login| Auth[🔐 Authentication<br/>Supabase Auth]
+    User -->|Connect Calendar| GoogleOAuth[🔗 Google OAuth<br/>Authorization]
+    User -->|Sync Calendar| SyncAPI[📡 Sync API<br/>POST /api/ingestion/calendar/sync]
+    User -->|Set Energy Level| EnergyAPI[⚡ Energy API<br/>POST /api/energy-level]
+    User -->|Generate Plan| PlanAPI[📋 Plan API<br/>POST /api/plans/generate]
+    User -->|Update Task Flags| TaskAPI[🏷️ Task API<br/>PUT /api/tasks/:id]
+    User -->|Mark Done/Snooze| FeedbackAPI[💬 Feedback API<br/>POST /api/feedback]
+
+    %% Authentication Flow
+    Auth -->|JWT Token| Frontend[💻 Frontend<br/>Next.js]
+    GoogleOAuth -->|OAuth Tokens| OAuthDB[(🔑 OAuth Tokens<br/>Supabase)]
+
+    %% Calendar Sync Workflow
+    SyncAPI -->|Trigger| Workflow[🔄 LangGraph Workflow]
+    Workflow -->|1. Auth Node| VerifyCreds[✓ Verify Credentials<br/>from OAuth DB]
+    VerifyCreds -->|2. Ingestion Node| GoogleAPI[📅 Google Calendar API<br/>Fetch Events]
+    GoogleAPI -->|Calendar Events| ExtractNode[3. Extraction Node<br/>NLP Task Extraction]
+    ExtractNode -->|Raw Tasks| StoreNode[4. Storage Node<br/>Save to Database]
+    StoreNode -->|5. Encoding Node| Chroma[(🧠 Chroma Vector DB<br/>Context Embeddings)]
+    StoreNode -->|Tasks| TasksDB[(📝 Raw Tasks<br/>Supabase)]
+
+    %% Energy Level Flow
+    EnergyAPI -->|Store| EnergyDB[(⚡ Energy Levels<br/>Supabase)]
+
+    %% Plan Generation Flow
+    PlanAPI -->|Trigger| PlanWorkflow[📋 Planning Workflow]
+    PlanWorkflow -->|Fetch Tasks| TasksDB
+    PlanWorkflow -->|Fetch Energy| EnergyDB
+    PlanWorkflow -->|AI Planning| OpenAI[🤖 OpenAI API<br/>Generate Plan]
+    OpenAI -->|Daily Plan| PlansDB[(📅 Daily Plans<br/>Supabase)]
+
+    %% Task Management Flow
+    TaskAPI -->|Update Flags| TasksDB
+    TasksDB -->|Reload| PlanWorkflow
+
+    %% Feedback Flow
+    FeedbackAPI -->|Store Feedback| FeedbackDB[(💬 Task Feedback<br/>Supabase)]
+    FeedbackAPI -->|Update Plan| PlansDB
+
+    %% Display Flow
+    TasksDB -->|Read| Frontend
+    PlansDB -->|Read| Frontend
+    EnergyDB -->|Read| Frontend
+    FeedbackDB -->|Read| Frontend
+
+    %% Styling
+    classDef userClass fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef apiClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef dbClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef workflowClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef externalClass fill:#ffebee,stroke:#b71c1c,stroke-width:2px
+
+    class User userClass
+    class Frontend,SyncAPI,EnergyAPI,PlanAPI,TaskAPI,FeedbackAPI apiClass
+    class TasksDB,PlansDB,EnergyDB,FeedbackDB,OAuthDB dbClass
+    class Workflow,PlanWorkflow,VerifyCreds,ExtractNode,StoreNode workflowClass
+    class GoogleAPI,OpenAI,Chroma,Auth,GoogleOAuth externalClass
+```
+
+### Key Data Flows Explained
+
+1. **Authentication & Authorization**
+   - User signs up/logs in → Supabase Auth generates JWT token
+   - Google OAuth flow stores credentials securely for calendar access
+
+2. **Calendar Sync Workflow** (LangGraph Orchestration)
+   - User triggers sync → Workflow verifies OAuth credentials
+   - Fetches events from Google Calendar API
+   - Extracts tasks using NLP (title, description, attendees, etc.)
+   - Stores tasks in Supabase database
+   - Generates context embeddings in Chroma vector database
+
+3. **Daily Plan Generation**
+   - User sets energy level → Stored in database
+   - User requests plan → System fetches:
+     - Tasks from calendar sync
+     - Current energy level
+     - Task priorities (critical/urgent flags)
+   - OpenAI generates personalized plan → Stored in database
+
+4. **Task Management**
+   - User updates task flags (critical/urgent) → Updates task in database
+   - Changes trigger plan regeneration to reflect new priorities
+
+5. **Feedback Loop**
+   - User marks tasks as done or snoozes them → Feedback stored
+   - Plan updated with task status changes
+   - Feedback data used for future learning and improvements
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
