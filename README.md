@@ -85,6 +85,48 @@ graph TB
     class GoogleAPI,OpenAI,Chroma,Auth,GoogleOAuth externalClass
 ```
 
+### 🤖 Understanding Agents in the System
+
+In the Data Flow Diagram above, **agents** are AI-powered components that make intelligent decisions and process information autonomously. Here's how to identify them:
+
+#### **Agent Components** (AI-Powered):
+
+1. **🔄 LangGraph Workflow** (Calendar Sync Workflow)
+   - **What it is**: An orchestration agent that coordinates multiple steps
+   - **Why it's an agent**: It makes decisions about workflow execution, handles errors, and manages the sequence of operations
+   - **What it does**: Coordinates the entire calendar sync process from start to finish
+
+2. **3. Extraction Node** (NLP Task Extraction)
+   - **What it is**: An AI agent that analyzes calendar events
+   - **Why it's an agent**: Uses Natural Language Processing (NLP) to intelligently identify tasks, deadlines, and priorities from unstructured text
+   - **What it does**: Reads calendar event titles, descriptions, and attendees to extract actionable tasks
+
+3. **📋 Planning Workflow**
+   - **What it is**: An orchestration agent for plan generation
+   - **Why it's an agent**: Makes decisions about which tasks to include, how to prioritize them, and when to schedule them
+   - **What it does**: Coordinates fetching data and generating personalized daily plans
+
+4. **🤖 OpenAI API** (Generate Plan)
+   - **What it is**: A large language model agent
+   - **Why it's an agent**: Uses AI to understand context, energy levels, and priorities to create personalized plans
+   - **What it does**: Generates human-readable daily plans that match your capacity and goals
+
+#### **Non-Agent Components** (Standard System Components):
+
+- **APIs** (Sync API, Energy API, Plan API, etc.) - These are simple endpoints that receive requests and return responses
+- **Databases** (Supabase, Chroma) - These store and retrieve data but don't make decisions
+- **External Services** (Google Calendar API, Supabase Auth) - These are third-party services that provide data or authentication
+- **Frontend** - The user interface that displays information and collects input
+
+#### **Key Difference**:
+
+**Agents** = Components that use AI/ML to make decisions, understand context, and adapt their behavior  
+**Non-Agents** = Components that follow fixed rules, store data, or provide simple services
+
+The agents work together to create an intelligent system that learns from your behavior and adapts to your needs over time.
+
+---
+
 ### Key Data Flows Explained
 
 1. **Authentication & Authorization**
