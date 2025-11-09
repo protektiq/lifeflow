@@ -29,3 +29,13 @@ export interface EnergyLevel {
   updated_at: string
 }
 
+export interface Reminder {
+  id: string
+  title: string
+  description: string | null
+  start_time: string
+  end_time: string
+  is_all_day: boolean
+  date: string
+}
+

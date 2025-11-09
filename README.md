@@ -14,8 +14,11 @@ LifeFlow acts as your personal executive function assistant, helping you:
 - 🎯 **Smart Task Extraction** - Uses AI to identify tasks, deadlines, and priorities from calendar events
 - ⚡ **Energy-Aware Planning** - Creates daily plans that match your energy levels
 - 🏷️ **Priority Management** - Mark tasks as critical or urgent to focus on what matters
+- 🔔 **Smart Notifications** - Receive timely micro-nudges when tasks are due to start
+- 📧 **Email Reminders** - Get email notifications for important tasks (configurable)
 - 📊 **Track Progress** - Monitor your task completion and calendar sync metrics
 - 💬 **Provide Feedback** - Help the system learn your preferences and improve over time
+- 🧠 **Context Learning** - System learns from your behavior patterns and preferences
 
 ---
 
@@ -33,6 +36,8 @@ graph TB
     User -->|Generate Plan| PlanAPI[📋 Plan API<br/>POST /api/plans/generate]
     User -->|Update Task Flags| TaskAPI[🏷️ Task API<br/>PUT /api/tasks/:id]
     User -->|Mark Done/Snooze| FeedbackAPI[💬 Feedback API<br/>POST /api/feedback]
+    User -->|View Notifications| NotifAPI[🔔 Notifications API<br/>GET /api/notifications]
+    User -->|View Reminders| ReminderAPI[⏰ Reminders API<br/>GET /api/reminders]
 
     %% Authentication Flow
     Auth -->|JWT Token| Frontend[💻 Frontend<br/>Next.js]
@@ -65,6 +70,19 @@ graph TB
     FeedbackAPI -->|Store Feedback| FeedbackDB[(💬 Task Feedback<br/>Supabase)]
     FeedbackAPI -->|Update Plan| PlansDB
 
+    %% Notification Flow
+    PlansDB -->|Scheduled Tasks| Scheduler{{⏰ Background Scheduler<br/>APScheduler}}
+    Scheduler -->|Check Due Tasks| ActionAgent{{🎯 Action Agent<br/>Nudger}}
+    ActionAgent -->|Create Notifications| NotifDB[(🔔 Notifications<br/>Supabase)]
+    ActionAgent -->|Send Emails| EmailService[📧 Email Service<br/>SMTP]
+    NotifDB -->|Read| NotifAPI
+    NotifDB -->|Read| Frontend
+
+    %% Reminder Flow
+    PlansDB -->|Task Reminders| ReminderDB[(⏰ Reminders<br/>Supabase)]
+    ReminderDB -->|Read| ReminderAPI
+    ReminderDB -->|Read| Frontend
+
     %% Display Flow
     TasksDB -->|Read| Frontend
     PlansDB -->|Read| Frontend
@@ -80,11 +98,11 @@ graph TB
     classDef externalClass fill:#ffebee,stroke:#b71c1c,stroke-width:2px
 
     class User userClass
-    class Frontend,SyncAPI,EnergyAPI,PlanAPI,TaskAPI,FeedbackAPI apiClass
-    class TasksDB,PlansDB,EnergyDB,FeedbackDB,OAuthDB dbClass
-    class Workflow,ExtractNode,PlanWorkflow,OpenAI agentClass
-    class VerifyCreds,StoreNode workflowClass
-    class GoogleAPI,Chroma,Auth,GoogleOAuth externalClass
+    class Frontend,SyncAPI,EnergyAPI,PlanAPI,TaskAPI,FeedbackAPI,NotifAPI,ReminderAPI apiClass
+    class TasksDB,PlansDB,EnergyDB,FeedbackDB,OAuthDB,NotifDB,ReminderDB dbClass
+    class Workflow,ExtractNode,PlanWorkflow,OpenAI,ActionAgent agentClass
+    class VerifyCreds,StoreNode,Scheduler workflowClass
+    class GoogleAPI,Chroma,Auth,GoogleOAuth,EmailService externalClass
 ```
 
 ### 🤖 Understanding Agents in the System
@@ -112,6 +130,11 @@ In the Data Flow Diagram above, **agents** are AI-powered components that make i
    - **What it is**: A large language model agent
    - **Why it's an agent**: Uses AI to understand context, energy levels, and priorities to create personalized plans
    - **What it does**: Generates human-readable daily plans that match your capacity and goals
+
+5. **🎯 Action Agent** (Nudger)
+   - **What it is**: An agent that monitors scheduled tasks and triggers notifications
+   - **Why it's an agent**: Makes intelligent decisions about when to send notifications based on task timing and priority
+   - **What it does**: Checks for tasks due to start, creates notifications, and sends email reminders
 
 #### **Non-Agent Components** (Standard System Components):
 
@@ -156,10 +179,21 @@ The agents work together to create an intelligent system that learns from your b
    - User updates task flags (critical/urgent) → Updates task in database
    - Changes trigger plan regeneration to reflect new priorities
 
-5. **Feedback Loop**
+5. **Notification & Reminder System**
+   - Background scheduler runs every 2 minutes → Checks for tasks due in next 5 minutes
+   - Action Agent creates notifications → Stored in database
+   - Notifications sent via in-app display and email (if configured)
+   - Users can view and dismiss notifications in the dashboard
+
+6. **Feedback Loop**
    - User marks tasks as done or snoozes them → Feedback stored
    - Plan updated with task status changes
    - Feedback data used for future learning and improvements
+
+7. **Context Encoding & Learning**
+   - Task context embeddings stored in Chroma vector database
+   - System learns from user preferences and behavior patterns
+   - Context used to improve future plan generation
 
 ---
 
@@ -254,8 +288,12 @@ cd lifeflow
 
 2. **Run database migrations:**
    - Open the Supabase SQL Editor
-   - Copy and paste the contents of `supabase/migrations/001_initial_schema.sql`
-   - Execute the migration
+   - Run migrations in order:
+     - `supabase/migrations/001_initial_schema.sql` - Core tables (user_profiles, oauth_tokens, raw_tasks)
+     - `supabase/migrations/002_phase2_schema.sql` - Daily plans and energy levels
+     - `supabase/migrations/003_phase3_notifications.sql` - Notifications and reminders
+     - `supabase/migrations/004_get_user_email_function.sql` - Email lookup function
+   - Execute each migration sequentially
 
 3. **Configure authentication:**
    - Enable Email provider in Supabase Auth settings
@@ -305,13 +343,21 @@ cd lifeflow
 - Mark tasks as **Critical** or **Urgent** to prioritize them
 - Provide feedback on tasks to help LifeFlow learn your preferences
 
-### 7. **Track Your Progress**
+### 7. **Receive Notifications & Reminders**
+
+- **In-App Notifications**: View notifications in the dashboard's notification center
+- **Email Notifications**: Receive email reminders for tasks (configure SMTP settings)
+- Notifications are automatically sent when tasks are due to start
+- Dismiss notifications as you complete tasks
+
+### 8. **Track Your Progress**
 
 - Monitor your sync metrics:
   - Success rate
   - Total events processed
   - Successful vs failed ingestions
 - Review your daily plans and task completion
+- View notification history and feedback
 
 ---
 
@@ -321,13 +367,15 @@ LifeFlow is built with modern, scalable technologies:
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **Frontend** | Next.js 16 (TypeScript) | User interface and experience |
-| **Backend** | FastAPI (Python) | API and agent services |
+| **Frontend** | Next.js 16, React 19 (TypeScript) | User interface and experience |
+| **Backend** | FastAPI (Python 3.11+) | API and agent services |
 | **Database** | Supabase (PostgreSQL) | Relational data storage |
 | **Vector DB** | Chroma | Context embeddings and behavior patterns |
 | **Orchestration** | LangGraph | Multi-agent workflow management |
+| **Scheduler** | APScheduler | Background task scheduling for notifications |
 | **AI** | OpenAI API | Task extraction and planning |
 | **Auth** | Supabase Auth | Secure user authentication |
+| **Email** | SMTP (Gmail/SendGrid/etc.) | Email notifications |
 
 ---
 
@@ -338,19 +386,35 @@ lifeflow/
 ├── backend/              # FastAPI backend
 │   ├── app/
 │   │   ├── agents/      # AI agent implementations
+│   │   │   ├── action/  # Action agents (nudger)
+│   │   │   ├── cognition/ # Cognition agents (encoding, planner, learning)
+│   │   │   ├── orchestration/ # LangGraph workflows
+│   │   │   └── perception/ # Perception agents (ingestion, NLP extraction)
 │   │   ├── api/         # REST API endpoints
 │   │   ├── models/      # Data models
-│   │   └── utils/       # Utilities and helpers
+│   │   └── utils/       # Utilities and helpers (scheduler, monitoring)
 │   └── tests/           # Backend tests
 ├── frontend/             # Next.js frontend
 │   ├── app/             # App Router pages
+│   │   ├── auth/        # Authentication pages
+│   │   └── dashboard/   # Main dashboard page
 │   ├── components/      # React components
+│   │   ├── DailyPlanView.tsx
+│   │   ├── EnergyLevelInput.tsx
+│   │   ├── NotificationCenter.tsx
+│   │   ├── RawTasksView.tsx
+│   │   ├── RemindersView.tsx
+│   │   └── TaskFeedback.tsx
 │   ├── src/
 │   │   ├── lib/         # API clients and utilities
 │   │   └── types/       # TypeScript type definitions
 │   └── middleware.ts    # Route protection
 └── supabase/            # Database migrations
     └── migrations/
+        ├── 001_initial_schema.sql
+        ├── 002_phase2_schema.sql
+        ├── 003_phase3_notifications.sql
+        └── 004_get_user_email_function.sql
 ```
 
 ---
@@ -365,6 +429,7 @@ Both backend and frontend require environment variables to be configured. See [E
 - Configuring Google OAuth
 - Adding your OpenAI API key
 - Configuring Chroma vector database
+- Configuring email notifications (SMTP settings) - See [PHASE3_NOTIFICATIONS.md](PHASE3_NOTIFICATIONS.md)
 
 ### API Documentation
 
@@ -393,8 +458,9 @@ npm test
 
 ---
 
-## ✅ Current Features (Phase 1)
+## ✅ Current Features
 
+### Phase 1: Core Functionality ✅
 - ✅ **User Authentication** - Email and Google OAuth sign-in
 - ✅ **Google Calendar Integration** - Connect and sync your calendar
 - ✅ **Event Ingestion** - Automatic extraction of tasks from calendar events
@@ -405,16 +471,32 @@ npm test
 - ✅ **Feedback System** - Provide input to improve the system
 - ✅ **Metrics Dashboard** - Monitor sync success rates and task statistics
 
+### Phase 2: Context & Learning ✅
+- ✅ **Personal Context Encoding** - Task context embeddings stored in Chroma vector database
+- ✅ **Daily Plans with Energy Levels** - Plans generated considering user's energy state
+- ✅ **Task Priority Flags** - Critical and urgent flags for task prioritization
+- ✅ **Learning System** - System learns from user behavior and feedback patterns
+
+### Phase 3: Notifications & Reminders ✅
+- ✅ **In-App Notifications** - Real-time notification center in dashboard
+- ✅ **Email Notifications** - Configurable email reminders for tasks
+- ✅ **Background Scheduler** - Automatic task monitoring every 2 minutes
+- ✅ **Smart Nudging** - Micro-nudges sent when tasks are due to start
+- ✅ **Reminders System** - View and manage task reminders
+- ✅ **Notification Management** - Dismiss and track notification history
+
 ---
 
 ## 🗺️ Roadmap
 
-### Phase 2 (Coming Soon)
+### Phase 4 (Future Enhancements)
 
-- 🚧 **Personal Context Encoding** - Learn your preferences and patterns
 - 🚧 **Proactive Planning** - Predict blockers and suggest optimizations
-- 🚧 **Real-Time Nudging** - Get timely reminders and suggestions
+- 🚧 **Advanced Analytics** - Deeper insights into productivity patterns
 - 🚧 **Enhanced UI/UX** - Improved interface and user experience
+- 🚧 **Mobile App** - Native mobile applications for iOS and Android
+- 🚧 **Multi-Calendar Support** - Support for multiple calendar sources
+- 🚧 **Team Collaboration** - Share plans and tasks with team members
 
 ---
 
@@ -423,6 +505,10 @@ npm test
 - **[Environment Setup Guide](ENV_SETUP.md)** - Detailed instructions for configuring API keys and services
 - **[Running Guide](RUNNING.md)** - Step-by-step instructions for running the application
 - **[Phase 1 Validation](PHASE1_VALIDATION.md)** - Validation criteria and testing results
+- **[Phase 3 Notifications](PHASE3_NOTIFICATIONS.md)** - Notification system documentation and configuration
+- **[Google OAuth Setup](GOOGLE_OAUTH_SETUP.md)** - Step-by-step Google OAuth configuration guide
+- **[Backend Deployment](BACKEND_DEPLOYMENT.md)** - Guide for deploying the backend to production
+- **[Quick Deploy](QUICK_DEPLOY.md)** - Quick deployment instructions
 
 ---
 
@@ -448,7 +534,10 @@ MIT License - see LICENSE file for details
 - **Sync regularly** - Keep your calendar synced to ensure tasks are up to date
 - **Set energy levels** - Accurate energy levels help create better plans
 - **Use priority flags** - Mark critical tasks to focus on what matters most
+- **Enable email notifications** - Configure SMTP settings to receive email reminders
+- **Check notifications** - Review the notification center regularly for timely task reminders
 - **Provide feedback** - Help LifeFlow learn your preferences and improve
+- **Generate daily plans** - Create plans each morning to optimize your day
 
 ---
 

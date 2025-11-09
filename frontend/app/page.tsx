@@ -1,30 +1,426 @@
+"use client"
+
 import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
+import { 
+  Calendar, 
+  Sparkles, 
+  Zap, 
+  Target, 
+  TrendingUp, 
+  Brain,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  BarChart3,
+  Users,
+  Rocket
+} from 'lucide-react'
 
 export default function Home() {
+  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set())
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+
+  useEffect(() => {
+    const observerOptions = {
+      root: null,
+      rootMargin: '-100px 0px',
+      threshold: 0.1
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const sectionId = entry.target.getAttribute('data-section-id')
+          if (sectionId) {
+            setVisibleSections((prev) => new Set(prev).add(sectionId))
+          }
+        }
+      })
+    }, observerOptions)
+
+    Object.values(sectionRefs.current).forEach((ref) => {
+      if (ref) observer.observe(ref)
+    })
+
+    return () => {
+      Object.values(sectionRefs.current).forEach((ref) => {
+        if (ref) observer.unobserve(ref)
+      })
+    }
+  }, [])
+
+  const setSectionRef = (id: string) => (el: HTMLDivElement | null) => {
+    sectionRefs.current[id] = el
+  }
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
-      <div className="mx-auto max-w-2xl text-center">
-        <h1 className="text-5xl font-bold text-gray-900 mb-4">
-          LifeFlow
-        </h1>
-        <p className="text-xl text-gray-600 mb-8">
-          Transform your to-do list into a done list with AI-powered task management
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Link
-            href="/auth/login"
-            className="rounded-md bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/auth/register"
-            className="rounded-md border border-gray-300 bg-white px-6 py-3 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Get Started
-          </Link>
+    <div className="min-h-screen overflow-x-hidden">
+      {/* Hero Section */}
+      <section 
+        className="relative min-h-screen flex items-center justify-center overflow-hidden"
+        data-section-id="hero"
+        ref={setSectionRef('hero')}
+      >
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-500 to-blue-500 animate-gradient opacity-90"></div>
+        
+        {/* Floating geometric shapes */}
+        <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl animate-float"></div>
+        <div className="absolute top-40 right-20 w-32 h-32 bg-pink-400/20 rounded-full blur-2xl animate-float-reverse"></div>
+        <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-blue-400/20 rounded-full blur-xl animate-float"></div>
+        <div className="absolute bottom-40 right-1/3 w-28 h-28 bg-purple-400/20 rounded-full blur-2xl animate-float-reverse"></div>
+
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className={`space-y-6 sm:space-y-8 ${visibleSections.has('hero') ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[12rem] font-bold leading-none tracking-tight relative">
+              <span className="hero-gradient-text inline-block relative z-10" data-text="LifeFlow">LifeFlow</span>
+              <span className="hero-gradient-text-outline absolute inset-0 inline-block" aria-hidden="true">LifeFlow</span>
+            </h1>
+            <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 font-medium max-w-3xl mx-auto leading-relaxed px-2">
+              Transform your to-do list into a <span className="font-bold text-white">done list</span> with AI-powered task management
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center pt-4 px-2">
+              <Link
+                href="/auth/register"
+                className="group relative w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white text-purple-600 font-bold text-base sm:text-lg rounded-full overflow-hidden transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-pink-500/50 focus:outline-none focus:ring-4 focus:ring-white/50"
+                aria-label="Get started with LifeFlow"
+              >
+                <span className="relative z-10 flex items-center gap-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
+                  Get Started Free
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span className="absolute inset-0 flex items-center justify-center gap-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                  Get Started Free
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
+              <Link
+                href="/auth/login"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 border-2 border-white/30 text-white font-bold text-base sm:text-lg rounded-full backdrop-blur-sm transition-all duration-300 hover:border-white hover:bg-white/10 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-white/50"
+                aria-label="Sign in to LifeFlow"
+              >
+                Sign In
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Features Section */}
+      <section 
+        className="relative py-24 sm:py-32 bg-gradient-to-b from-gray-50 to-white"
+        data-section-id="features"
+        ref={setSectionRef('features')}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={`text-center mb-12 sm:mb-16 ${visibleSections.has('features') ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
+              <span className="gradient-text">Powerful Features</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+              Everything you need to master your productivity
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Calendar,
+                title: 'Smart Calendar Sync',
+                description: 'Automatically sync with Google Calendar and extract tasks from your events',
+                delay: '0'
+              },
+              {
+                icon: Sparkles,
+                title: 'AI-Powered Extraction',
+                description: 'Intelligent task identification using advanced NLP to understand your needs',
+                delay: '100'
+              },
+              {
+                icon: Zap,
+                title: 'Energy-Aware Planning',
+                description: 'Create personalized daily plans that match your energy levels',
+                delay: '200'
+              },
+              {
+                icon: Target,
+                title: 'Priority Management',
+                description: 'Mark tasks as critical or urgent to focus on what matters most',
+                delay: '300'
+              },
+              {
+                icon: Brain,
+                title: 'Adaptive Learning',
+                description: 'The system learns from your feedback to improve over time',
+                delay: '400'
+              },
+              {
+                icon: BarChart3,
+                title: 'Progress Tracking',
+                description: 'Monitor your task completion and productivity metrics',
+                delay: '500'
+              }
+            ].map((feature, index) => {
+              const Icon = feature.icon
+              const isVisible = visibleSections.has('features')
+              return (
+                <div
+                  key={index}
+                  className={`group relative p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-100 ${
+                    isVisible ? 'animate-scale-in' : 'opacity-0'
+                  }`}
+                  style={{ animationDelay: `${feature.delay}ms` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative z-10">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <Icon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 text-gray-900 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
+                      {feature.title}
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section 
+        className="relative py-24 sm:py-32 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50"
+        data-section-id="how-it-works"
+        ref={setSectionRef('how-it-works')}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={`text-center mb-12 sm:mb-16 ${visibleSections.has('how-it-works') ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
+              <span className="gradient-text">How It Works</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+              Get started in minutes, transform your productivity forever
+            </p>
+          </div>
+
+          <div className="relative">
+            {/* Connecting line (hidden on mobile) */}
+            <div className="hidden lg:block absolute top-24 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 opacity-20"></div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4">
+              {[
+                {
+                  number: '1',
+                  icon: Calendar,
+                  title: 'Connect Calendar',
+                  description: 'Link your Google Calendar in seconds'
+                },
+                {
+                  number: '2',
+                  icon: Sparkles,
+                  title: 'AI Extracts Tasks',
+                  description: 'Our AI automatically identifies tasks from events'
+                },
+                {
+                  number: '3',
+                  icon: Zap,
+                  title: 'Set Energy Level',
+                  description: 'Tell us how you\'re feeling today'
+                },
+                {
+                  number: '4',
+                  icon: Rocket,
+                  title: 'Get Your Plan',
+                  description: 'Receive your personalized daily plan'
+                }
+              ].map((step, index) => {
+                const Icon = step.icon
+                const isVisible = visibleSections.has('how-it-works')
+                return (
+                  <div
+                    key={index}
+                    className={`relative ${isVisible ? 'animate-scale-in' : 'opacity-0'}`}
+                    style={{ animationDelay: `${index * 150}ms` }}
+                  >
+                    <div className="text-center">
+                      <div className="relative inline-flex items-center justify-center mb-6">
+                        <div className="absolute w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full opacity-20 animate-pulse"></div>
+                        <div className="relative w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                          {step.number}
+                        </div>
+                        <div className="absolute -top-2 -right-2 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-purple-200">
+                          <Icon className="w-6 h-6 text-purple-600" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold mb-2 text-gray-900">
+                        {step.title}
+                      </h3>
+                      <p className="text-gray-600">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits Section */}
+      <section 
+        className="relative py-24 sm:py-32 bg-white"
+        data-section-id="benefits"
+        ref={setSectionRef('benefits')}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={`text-center mb-12 sm:mb-16 ${visibleSections.has('benefits') ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
+              <span className="gradient-text">Why LifeFlow?</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+              Join thousands who've transformed their productivity
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+            {[
+              {
+                icon: TrendingUp,
+                stat: '3x',
+                label: 'More Productive',
+                description: 'Users report 3x increase in task completion'
+              },
+              {
+                icon: Clock,
+                stat: '2hrs',
+                label: 'Saved Daily',
+                description: 'Average time saved on planning and organization'
+              },
+              {
+                icon: CheckCircle2,
+                stat: '95%',
+                label: 'Task Completion',
+                description: 'Higher completion rate with AI-powered planning'
+              }
+            ].map((benefit, index) => {
+              const Icon = benefit.icon
+              const isVisible = visibleSections.has('benefits')
+              return (
+                <div
+                  key={index}
+                  className={`text-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 hover:shadow-xl transition-all duration-300 hover:scale-105 ${
+                    isVisible ? 'animate-scale-in' : 'opacity-0'
+                  }`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mb-4">
+                    <Icon className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="text-5xl font-bold gradient-text mb-2">
+                    {benefit.stat}
+                  </div>
+                  <div className="text-xl font-bold text-gray-900 mb-2">
+                    {benefit.label}
+                  </div>
+                  <p className="text-gray-600">
+                    {benefit.description}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 ${visibleSections.has('benefits') ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            {[
+              'Never miss a deadline again',
+              'Focus on what matters most',
+              'Reduce stress and overwhelm',
+              'Achieve your goals faster',
+              'Work smarter, not harder',
+              'Get personalized insights'
+            ].map((benefit, index) => (
+              <div
+                key={index}
+                className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
+              >
+                <CheckCircle2 className="w-6 h-6 text-purple-600 flex-shrink-0" />
+                <span className="text-lg text-gray-900 font-medium">{benefit}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section 
+        className="relative py-24 sm:py-32 overflow-hidden"
+        data-section-id="cta"
+        ref={setSectionRef('cta')}
+      >
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-500 to-blue-500 animate-gradient"></div>
+        
+        {/* Floating particles */}
+        <div className="absolute top-10 left-10 w-16 h-16 bg-white/10 rounded-full blur-xl animate-float"></div>
+        <div className="absolute top-32 right-20 w-24 h-24 bg-pink-300/20 rounded-full blur-2xl animate-float-reverse"></div>
+        <div className="absolute bottom-20 left-1/3 w-20 h-20 bg-blue-300/20 rounded-full blur-xl animate-float"></div>
+        <div className="absolute bottom-32 right-1/4 w-28 h-28 bg-purple-300/20 rounded-full blur-2xl animate-float-reverse"></div>
+
+        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className={`space-y-6 sm:space-y-8 ${visibleSections.has('cta') ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-3 sm:mb-4 px-2">
+              Ready to Transform Your Productivity?
+            </h2>
+            <p className="text-lg sm:text-xl md:text-2xl text-white/90 max-w-2xl mx-auto px-2">
+              Join thousands of users who've already transformed their workflow with LifeFlow
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center pt-4 px-2">
+              <Link
+                href="/auth/register"
+                className="group relative w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 bg-white text-purple-600 font-bold text-lg sm:text-xl rounded-full overflow-hidden transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-white/50 focus:outline-none focus:ring-4 focus:ring-white/50"
+                aria-label="Get started with LifeFlow"
+              >
+                <span className="relative z-10 flex items-center gap-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
+                  Get Started Free
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span className="absolute inset-0 flex items-center justify-center gap-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                  Get Started Free
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </Link>
+              <Link
+                href="/auth/login"
+                className="w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 border-2 border-white/30 text-white font-bold text-lg sm:text-xl rounded-full backdrop-blur-sm transition-all duration-300 hover:border-white hover:bg-white/10 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-white/50"
+                aria-label="Sign in to LifeFlow"
+              >
+                Sign In
+              </Link>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 pt-6 sm:pt-8 text-white/80 text-sm sm:text-base">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>10K+ Users</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>99.9% Uptime</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>AI-Powered</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

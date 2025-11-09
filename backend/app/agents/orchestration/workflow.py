@@ -17,6 +17,7 @@ from app.agents.cognition.encoding import store_task_context_embedding
 from app.agents.cognition.planner import generate_daily_plan
 from app.models.plan import PlanningContext
 from datetime import datetime, date, timezone, timedelta
+from uuid import UUID
 import uuid
 
 
@@ -172,13 +173,30 @@ async def storage_node(state: WorkflowState) -> WorkflowState:
                     continue
                 
                 # Insert raw task
+                # Ensure datetimes are timezone-aware and converted to UTC for storage
+                start_time_utc = raw_task.start_time
+                end_time_utc = raw_task.end_time
+                
+                # Convert to UTC if timezone-aware, otherwise assume UTC
+                if start_time_utc.tzinfo is None:
+                    # Naive datetime - assume it's already in UTC
+                    start_time_utc = start_time_utc.replace(tzinfo=timezone.utc)
+                else:
+                    # Timezone-aware - convert to UTC
+                    start_time_utc = start_time_utc.astimezone(timezone.utc)
+                
+                if end_time_utc.tzinfo is None:
+                    end_time_utc = end_time_utc.replace(tzinfo=timezone.utc)
+                else:
+                    end_time_utc = end_time_utc.astimezone(timezone.utc)
+                
                 task_data = {
                     "user_id": user_id,
                     "source": raw_task.source,
                     "title": raw_task.title,
                     "description": raw_task.description,
-                    "start_time": raw_task.start_time.isoformat(),
-                    "end_time": raw_task.end_time.isoformat(),
+                    "start_time": start_time_utc.isoformat(),
+                    "end_time": end_time_utc.isoformat(),
                     "attendees": raw_task.attendees,
                     "location": raw_task.location,
                     "recurrence_pattern": raw_task.recurrence_pattern,
@@ -616,19 +634,16 @@ async def run_planning_workflow(user_id: str, plan_date: date, energy_level: Opt
     
     # Query tasks where the LOCAL date part of start_time matches plan_date
     # Tasks are stored in UTC, but represent local times
-    # For PST (UTC-8), Nov 8 local time spans from Nov 8 08:00 UTC to Nov 9 08:00 UTC
-    # For EST (UTC-5), Nov 8 local time spans from Nov 8 05:00 UTC to Nov 9 05:00 UTC
-    # We'll use a wider range to cover all US timezones: Nov 8 04:00 UTC to Nov 9 08:00 UTC
-    # This covers PST (-8) to EST (-5) timezones
+    # We need to query a wider range and then filter by local date
+    # Use a range that covers all possible timezones: from midnight UTC of plan_date to midnight UTC of next_day+1
     from datetime import timedelta
     next_day = plan_date + timedelta(days=1)
-    next_day_str = next_day.isoformat()
+    day_after_next = plan_date + timedelta(days=2)
     
-    # Query range: start from 8 AM UTC (covers start of day in PST)
-    # Tasks stored as 00:00-08:00 UTC are likely previous day in PST, exclude them
-    # End: 8 AM UTC next day (covers end of day in PST)
-    start_query = f"{plan_date_str}T08:00:00Z"  # 8 AM UTC = Nov 8 midnight PST
-    end_query = f"{next_day_str}T08:00:00Z"     # 8 AM UTC next day = Nov 9 midnight PST
+    # Query range: from start of plan_date UTC to start of day_after_next UTC
+    # This ensures we capture all tasks regardless of timezone
+    start_query = f"{plan_date_str}T00:00:00Z"
+    end_query = f"{day_after_next.isoformat()}T00:00:00Z"
     
     StructuredLogger.log_event(
         "planning_fetch_tasks",
@@ -671,35 +686,227 @@ async def run_planning_workflow(user_id: str, plan_date: date, energy_level: Opt
         }
     
     # Convert to RawTaskCreate format
-    # Filter out all-day tasks that are for the next day (they start at midnight UTC on next_day)
+    # Filter tasks by local date and collect reminders separately
     from app.models.task import RawTaskCreate
     raw_tasks = []
+    reminders = []  # Collect reminders separately instead of filtering them out
+    skipped_previous_day = 0
+    
     for task_data in tasks_response.data:
-        # Check if this is an all-day task by looking at raw_data
+        # Check if this is a reminder (Google Calendar reminders have eventType or are very short events)
         raw_data = task_data.get("raw_data", {})
+        event_type = raw_data.get("eventType", "default")
         start_data = raw_data.get("start", {})
-        is_all_day = "date" in start_data  # All-day events use "date" instead of "dateTime"
         
-        # Parse start_time to check the date
+        # Check if it's an all-day event
+        is_all_day_event = "date" in start_data
+        
+        # Check if it's a reminder: 
+        # 1. eventType is "reminder"
+        # 2. All-day events with no attendees/location (likely reminders)
+        # 3. Very short events (< 5 minutes) with no attendees/location and "reminder" in title
         start_time = datetime.fromisoformat(task_data["start_time"].replace("Z", "+00:00"))
-        start_date_utc = start_time.date()
+        end_time = datetime.fromisoformat(task_data["end_time"].replace("Z", "+00:00"))
+        duration = end_time - start_time
         
-        # Exclude all-day tasks that start on next_day (they're for tomorrow, not today)
-        if is_all_day and start_date_utc == next_day:
-            StructuredLogger.log_event(
-                "planning_skip_all_day_next_day",
-                f"Skipping all-day task '{task_data.get('title')}' for next day",
-                user_id=user_id,
-                metadata={"task_title": task_data.get("title"), "start_date": str(start_date_utc)},
-            )
+        title_lower = task_data.get("title", "").lower()
+        has_attendees = task_data.get("attendees") and len(task_data.get("attendees", [])) > 0
+        has_location = bool(task_data.get("location"))
+        
+        # Check if already converted from reminder - if so, treat as regular task
+        is_converted_reminder = raw_data.get("converted_from_reminder", False)
+        
+        is_reminder = (
+            not is_converted_reminder and  # Don't treat converted reminders as reminders
+            (event_type == "reminder" or
+            (is_all_day_event and not has_attendees and not has_location) or  # All-day events without attendees/location are likely reminders
+            (duration.total_seconds() < 300 and  # Less than 5 minutes
+             not has_attendees and
+             not has_location and
+             "reminder" in title_lower))
+        )
+        
+        if is_reminder:
+            # Check if reminder is for the plan_date before adding it
+            reminder_date_matches = False
+            
+            if is_all_day_event:
+                all_day_date_str = start_data.get("date")
+                if all_day_date_str:
+                    all_day_date = date.fromisoformat(all_day_date_str)
+                    reminder_date_matches = all_day_date == plan_date
+            else:
+                # For timed reminders, check local date
+                date_time_str = start_data.get("dateTime", "")
+                if date_time_str:
+                    try:
+                        date_part = date_time_str.split('T')[0]
+                        if len(date_part) == 10:
+                            local_date = date.fromisoformat(date_part)
+                            reminder_date_matches = local_date == plan_date
+                    except (ValueError, AttributeError, IndexError):
+                        # Fallback to UTC date check
+                        reminder_date_matches = start_time.date() == plan_date or start_time.date() == next_day
+            
+            if reminder_date_matches:
+                # Store reminder data for display
+                reminders.append({
+                    "id": task_data.get("id"),
+                    "title": task_data.get("title"),
+                    "description": task_data.get("description"),
+                    "start_time": task_data.get("start_time"),
+                    "end_time": task_data.get("end_time"),
+                    "is_all_day": is_all_day_event,
+                    "raw_data": raw_data,
+                })
+                StructuredLogger.log_event(
+                    "planning_collected_reminder",
+                    f"Collected reminder '{task_data.get('title')}' for plan date",
+                    user_id=user_id,
+                    metadata={
+                        "task_title": task_data.get("title"), 
+                        "event_type": event_type,
+                        "is_all_day_event": is_all_day_event,
+                    },
+                )
+            # Skip reminder - don't add to raw_tasks
             continue
+        
+        # Check if this is an all-day task (we already extracted start_data above)
+        is_all_day = is_all_day_event  # All-day events use "date" instead of "dateTime"
+        
+        # For all-day tasks, check the date field directly
+        if is_all_day:
+            all_day_date_str = start_data.get("date")
+            if all_day_date_str:
+                all_day_date = date.fromisoformat(all_day_date_str)
+                if all_day_date != plan_date:
+                    skipped_previous_day += 1
+                    StructuredLogger.log_event(
+                        "planning_skip_all_day_wrong_date",
+                        f"Skipping all-day task '{task_data.get('title')}' for date {all_day_date_str}",
+                        user_id=user_id,
+                        metadata={"task_title": task_data.get("title"), "all_day_date": all_day_date_str, "plan_date": plan_date_str},
+                    )
+                    continue
+        
+        # For timed events, check if the LOCAL date matches plan_date
+        # Google Calendar events store the original local time in raw_data
+        # We should use that to determine the correct date, not the UTC-stored time
+        if not is_all_day:
+            # Try to extract the local date from raw_data
+            # Google Calendar events have dateTime in the user's timezone
+            date_time_str = start_data.get("dateTime", "")
+            local_date = None
+            
+            # Log raw_data structure for debugging
+            StructuredLogger.log_event(
+                "planning_checking_task_date",
+                f"Checking task date for '{task_data.get('title')}'",
+                user_id=user_id,
+                metadata={
+                    "task_title": task_data.get("title"),
+                    "start_time_utc": task_data.get("start_time"),
+                    "raw_data_start": str(start_data),
+                    "date_time_str": date_time_str,
+                    "plan_date": plan_date_str
+                },
+                level="DEBUG"
+            )
+            
+            # Extract the local date from the dateTime string BEFORE parsing/converting to UTC
+            # Format is typically: "2025-11-08T16:00:00-08:00" or "2025-11-09T01:00:00Z"
+            # We need to extract the date part (YYYY-MM-DD) directly from the string
+            if date_time_str:
+                try:
+                    # Extract date part from the string (before the 'T')
+                    # This gives us the local date without timezone conversion
+                    date_part = date_time_str.split('T')[0]
+                    if len(date_part) == 10:  # YYYY-MM-DD format
+                        local_date = date.fromisoformat(date_part)
+                        StructuredLogger.log_event(
+                            "planning_extracted_local_date",
+                            f"Extracted local date {local_date} from dateTime string",
+                            user_id=user_id,
+                            metadata={
+                                "task_title": task_data.get("title"),
+                                "date_time_str": date_time_str,
+                                "local_date": str(local_date),
+                                "plan_date": plan_date_str
+                            },
+                            level="INFO"
+                        )
+                except (ValueError, AttributeError, IndexError) as e:
+                    # If extraction fails, fall back to UTC date check
+                    StructuredLogger.log_event(
+                        "planning_local_date_extraction_failed",
+                        f"Failed to extract local date from dateTime string",
+                        user_id=user_id,
+                        metadata={
+                            "task_title": task_data.get("title"),
+                            "date_time_str": date_time_str,
+                            "error": str(e)
+                        },
+                        level="WARNING"
+                    )
+                    pass
+            
+            # If we couldn't get local date from raw_data, use UTC date as fallback
+            # but be more conservative about filtering
+            if local_date is None:
+                start_date_utc = start_time.date()
+                
+                # If UTC date is before plan_date, skip (definitely from previous day)
+                if start_date_utc < plan_date:
+                    skipped_previous_day += 1
+                    StructuredLogger.log_event(
+                        "planning_skip_previous_day",
+                        f"Skipping task '{task_data.get('title')}' from previous day (UTC date: {start_date_utc})",
+                        user_id=user_id,
+                        metadata={"task_title": task_data.get("title"), "start_date_utc": str(start_date_utc), "plan_date": plan_date_str},
+                    )
+                    continue
+                
+                # If UTC date is day_after_next or later, skip (from future day)
+                if start_date_utc >= day_after_next:
+                    skipped_previous_day += 1
+                    StructuredLogger.log_event(
+                        "planning_skip_future_day",
+                        f"Skipping task '{task_data.get('title')}' from future day (UTC date: {start_date_utc})",
+                        user_id=user_id,
+                        metadata={"task_title": task_data.get("title"), "start_date_utc": str(start_date_utc), "plan_date": plan_date_str},
+                    )
+                    continue
+                
+                # For tasks on next_day UTC with early times (< 8 AM UTC), 
+                # they're likely for next_day in most timezones, so skip
+                if start_date_utc == next_day and start_time.hour < 8:
+                    skipped_previous_day += 1
+                    StructuredLogger.log_event(
+                        "planning_skip_early_next_day",
+                        f"Skipping task '{task_data.get('title')}' likely for next day (UTC: {start_time.isoformat()})",
+                        user_id=user_id,
+                        metadata={"task_title": task_data.get("title"), "start_time_utc": start_time.isoformat(), "plan_date": plan_date_str},
+                    )
+                    continue
+            else:
+                # Use the local date from raw_data - this is the most accurate
+                if local_date != plan_date:
+                    skipped_previous_day += 1
+                    StructuredLogger.log_event(
+                        "planning_skip_wrong_local_date",
+                        f"Skipping task '{task_data.get('title')}' - local date {local_date} doesn't match plan_date {plan_date_str}",
+                        user_id=user_id,
+                        metadata={"task_title": task_data.get("title"), "local_date": str(local_date), "plan_date": plan_date_str},
+                    )
+                    continue
         
         raw_tasks.append(RawTaskCreate(
             source=task_data["source"],
             title=task_data["title"],
             description=task_data.get("description"),
             start_time=start_time,
-            end_time=datetime.fromisoformat(task_data["end_time"].replace("Z", "+00:00")),
+            end_time=end_time,
             attendees=task_data.get("attendees", []),
             location=task_data.get("location"),
             recurrence_pattern=task_data.get("recurrence_pattern"),
@@ -708,6 +915,69 @@ async def run_planning_workflow(user_id: str, plan_date: date, energy_level: Opt
             is_urgent=task_data.get("is_urgent", False),
             raw_data=raw_data,
         ))
+    
+    # Log filtering results
+    StructuredLogger.log_event(
+        "planning_tasks_filtered",
+        f"Filtered tasks: {len(raw_tasks)} included, {skipped_previous_day} from wrong day, {len(reminders)} reminders collected",
+        user_id=user_id,
+        metadata={
+            "included_count": len(raw_tasks),
+            "skipped_previous_day": skipped_previous_day,
+            "reminders_count": len(reminders),
+        }
+    )
+    
+    # Handle case where no tasks remain after filtering
+    if not raw_tasks:
+        StructuredLogger.log_event(
+            "planning_no_tasks",
+            f"No tasks remaining after filtering for plan date {plan_date_str}",
+            user_id=user_id,
+            metadata={
+                "plan_date": plan_date_str,
+                "skipped_previous_day": skipped_previous_day,
+                "reminders_count": len(reminders),
+            }
+        )
+        # Create an empty plan
+        from app.models.plan import DailyPlan
+        empty_plan = DailyPlan(
+            user_id=UUID(user_id) if isinstance(user_id, str) else user_id,
+            plan_date=plan_date,
+            tasks=[],
+            energy_level=energy_level,
+            status="active"
+        )
+        
+        # Store empty plan in database
+        plan_data = {
+            "user_id": user_id,
+            "plan_date": plan_date.isoformat(),
+            "tasks": [],
+            "energy_level": energy_level,
+            "status": "active",
+        }
+        
+        # Check if plan already exists for this date
+        existing = supabase.table("daily_plans").select("id").eq(
+            "user_id", user_id
+        ).eq("plan_date", plan_date.isoformat()).execute()
+        
+        if existing.data:
+            # Update existing plan
+            supabase.table("daily_plans").update(plan_data).eq(
+                "id", existing.data[0]["id"]
+            ).execute()
+        else:
+            # Create new plan
+            supabase.table("daily_plans").insert(plan_data).execute()
+        
+        return {
+            "success": True,
+            "status": "planned",
+            "errors": [],
+        }
     
     # Create initial state for planning workflow
     initial_state: WorkflowState = {

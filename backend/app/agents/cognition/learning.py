@@ -2,8 +2,15 @@
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
+from openai import OpenAI
+from app.config import settings
 from app.database import supabase
 from app.utils.monitoring import StructuredLogger
+import json
+
+
+# Initialize OpenAI client
+openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 def analyze_snooze_patterns(user_id: str) -> Dict[str, any]:
@@ -91,6 +98,187 @@ def analyze_snooze_patterns(user_id: str) -> Dict[str, any]:
         }
 
 
+def analyze_patterns_with_chatgpt(
+    user_id: str,
+    snooze_patterns: Dict,
+    task_history: Optional[List[Dict]] = None
+) -> Optional[Dict]:
+    """
+    Use ChatGPT to analyze user patterns and provide insights
+    
+    Args:
+        user_id: User ID
+        snooze_patterns: Dictionary with snooze pattern data
+        task_history: Optional list of recent tasks for context
+        
+    Returns:
+        Dictionary with ChatGPT insights or None if analysis fails:
+        - patterns: List of identified patterns
+        - recommendations: List of personalized recommendations
+        - reasoning: Explanation of patterns
+        - confidence: Confidence score (0.0-1.0)
+    """
+    try:
+        total_snoozes = snooze_patterns.get("total_snoozes", 0)
+        
+        if total_snoozes < 3:
+            # Not enough data for meaningful analysis
+            return None
+        
+        snooze_by_hour = snooze_patterns.get("snooze_frequency_by_hour", {})
+        average_duration = snooze_patterns.get("average_snooze_duration", 0)
+        
+        # Build prompt with pattern data
+        system_prompt = """You are an expert at analyzing user behavior patterns from task management data.
+Analyze the snooze patterns and provide insights about:
+1. When the user tends to snooze tasks (time patterns)
+2. Why they might be snoozing (energy levels, task complexity, etc.)
+3. Personalized recommendations for better scheduling
+
+Return a JSON object with your analysis."""
+        
+        # Format snooze data for prompt
+        hour_patterns = []
+        for hour, count in sorted(snooze_by_hour.items(), key=lambda x: x[1], reverse=True)[:5]:
+            hour_patterns.append(f"{hour}:00 - {count} snoozes")
+        
+        user_prompt = f"""User has {total_snoozes} total snoozes with average duration of {average_duration:.0f} minutes.
+
+Top snooze hours:
+{chr(10).join(hour_patterns) if hour_patterns else 'No clear patterns'}
+
+Analyze these patterns and provide:
+- patterns: List of 2-3 key patterns identified (e.g., "User avoids complex tasks in afternoon")
+- recommendations: List of 2-3 personalized recommendations
+- reasoning: Brief explanation of why these patterns exist (max 100 words)
+- confidence: Confidence score 0.0-1.0 based on data quality
+
+Return JSON with these fields."""
+        
+        StructuredLogger.log_event(
+            "chatgpt_learning_analysis_start",
+            f"Starting ChatGPT pattern analysis for user {user_id}",
+            user_id=user_id,
+            metadata={"total_snoozes": total_snoozes},
+        )
+        
+        # Try gpt-4o first, fallback to gpt-3.5-turbo
+        try:
+            response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.5,
+                response_format={"type": "json_object"}
+            )
+        except Exception as e:
+            StructuredLogger.log_event(
+                "chatgpt_learning_fallback",
+                f"gpt-4o failed, trying gpt-3.5-turbo: {str(e)}",
+                user_id=user_id,
+                metadata={"error": str(e)},
+                level="WARNING"
+            )
+            try:
+                response = openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.5,
+                    response_format={"type": "json_object"}
+                )
+            except Exception as e2:
+                StructuredLogger.log_event(
+                    "chatgpt_learning_failed",
+                    f"ChatGPT pattern analysis failed: {str(e2)}",
+                    user_id=user_id,
+                    metadata={"error": str(e2)},
+                    level="WARNING"
+                )
+                return None
+        
+        # Parse response
+        content = response.choices[0].message.content
+        analysis_result = json.loads(content)
+        
+        StructuredLogger.log_event(
+            "chatgpt_learning_analysis_success",
+            f"ChatGPT pattern analysis completed for user {user_id}",
+            user_id=user_id,
+            metadata={
+                "patterns_count": len(analysis_result.get("patterns", [])),
+                "confidence": analysis_result.get("confidence", 0.0),
+            },
+        )
+        
+        return analysis_result
+        
+    except json.JSONDecodeError as e:
+        StructuredLogger.log_event(
+            "chatgpt_learning_json_error",
+            f"Failed to parse ChatGPT JSON response: {str(e)}",
+            user_id=user_id,
+            metadata={"error": str(e)},
+            level="WARNING"
+        )
+        return None
+    except Exception as e:
+        StructuredLogger.log_error(
+            e,
+            context={
+                "user_id": user_id,
+                "function": "analyze_patterns_with_chatgpt"
+            }
+        )
+        return None
+
+
+def generate_learning_explanation(
+    user_id: str,
+    adjustments: Dict,
+    chatgpt_insights: Optional[Dict] = None
+) -> str:
+    """
+    Generate user-facing explanation for scheduling adjustments
+    
+    Args:
+        user_id: User ID
+        adjustments: Dictionary with adjustment data
+        chatgpt_insights: Optional ChatGPT insights
+        
+    Returns:
+        Human-readable explanation string
+    """
+    try:
+        reasoning_parts = adjustments.get("reasoning", [])
+        
+        if chatgpt_insights and chatgpt_insights.get("reasoning"):
+            # Use ChatGPT reasoning if available
+            chatgpt_reasoning = chatgpt_insights.get("reasoning", "")
+            if chatgpt_reasoning:
+                return chatgpt_reasoning
+        
+        # Fallback to rule-based reasoning
+        if reasoning_parts:
+            return " ".join(reasoning_parts)
+        
+        return "Schedule adjusted based on your task completion patterns."
+        
+    except Exception as e:
+        StructuredLogger.log_error(
+            e,
+            context={
+                "user_id": user_id,
+                "function": "generate_learning_explanation"
+            }
+        )
+        return "Schedule adjusted based on your patterns."
+
+
 def adjust_scheduling(
     user_id: str,
     task: dict,
@@ -111,6 +299,7 @@ def adjust_scheduling(
         - adjusted_start_time: Optional adjusted start time (datetime)
         - priority_adjustment: Adjustment multiplier for priority score
         - reasoning: Explanation of adjustments
+        - chatgpt_insights: Optional ChatGPT analysis insights
     """
     try:
         # Get snooze patterns if not provided
@@ -121,7 +310,28 @@ def adjust_scheduling(
             "adjusted_start_time": None,
             "priority_adjustment": 1.0,
             "reasoning": [],
+            "chatgpt_insights": None,
         }
+        
+        # Try ChatGPT analysis for better pattern understanding
+        chatgpt_insights = None
+        try:
+            chatgpt_insights = analyze_patterns_with_chatgpt(user_id, snooze_patterns)
+            if chatgpt_insights:
+                adjustments["chatgpt_insights"] = chatgpt_insights
+                # Incorporate ChatGPT recommendations into reasoning
+                recommendations = chatgpt_insights.get("recommendations", [])
+                if recommendations:
+                    adjustments["reasoning"].extend(recommendations[:2])  # Add top 2 recommendations
+        except Exception as e:
+            StructuredLogger.log_event(
+                "learning_chatgpt_analysis_error",
+                f"ChatGPT analysis failed, using rule-based: {str(e)}",
+                user_id=user_id,
+                metadata={"error": str(e)},
+                level="WARNING"
+            )
+            # Continue with rule-based logic
         
         # Check if task time matches high-snooze hours
         original_start_str = task.get("start_time")

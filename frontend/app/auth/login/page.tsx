@@ -5,9 +5,16 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/client'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default function LoginPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const [supabase] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return createClient()
+    }
+    return null
+  })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -15,6 +22,10 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabase) {
+      setError('Client not initialized')
+      return
+    }
     setError(null)
     setLoading(true)
 
@@ -40,6 +51,10 @@ export default function LoginPage() {
   }
 
   const handleGoogleAuth = async () => {
+    if (!supabase) {
+      setError('Client not initialized')
+      return
+    }
     try {
       const { data, error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -57,13 +72,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="w-full max-w-md space-y-6 sm:space-y-8 rounded-lg bg-white p-6 sm:p-8 shadow-md">
         <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">
+          <h2 className="text-center text-2xl sm:text-3xl font-bold text-gray-900">
             Sign in to LifeFlow
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-xs sm:text-sm text-gray-600">
             Or{' '}
             <Link href="/auth/register" className="font-medium text-blue-600 hover:text-blue-500">
               create a new account

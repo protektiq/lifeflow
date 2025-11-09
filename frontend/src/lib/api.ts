@@ -198,6 +198,17 @@ class ApiClient {
     return response.data
   }
 
+  // Reminders endpoints
+  async getRemindersForDate(date: string) {
+    const response = await this.client.get(`/api/reminders/${date}`)
+    return response.data
+  }
+
+  async convertReminderToTask(reminderId: string) {
+    const response = await this.client.post(`/api/reminders/${reminderId}/convert-to-task`)
+    return response.data
+  }
+
   // Health check
   async healthCheck() {
     const response = await this.client.get('/api/health')

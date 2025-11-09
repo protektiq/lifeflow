@@ -22,9 +22,9 @@ export default function DailyPlanView({
   const [taskStatuses, setTaskStatuses] = useState<Record<string, string>>({})
   if (loading) {
     return (
-      <div className="rounded-lg bg-white p-6 shadow-sm">
+      <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-lg animate-scale-in">
         <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
         </div>
       </div>
     )
@@ -32,15 +32,16 @@ export default function DailyPlanView({
 
   if (!plan) {
     return (
-      <div className="rounded-lg bg-white p-6 shadow-sm">
-        <div className="text-center py-8">
-          <p className="text-gray-500">
+      <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="relative z-10 text-center py-8">
+          <p className="text-gray-700 mb-4">
             No plan generated for {expectedDate ? new Date(expectedDate).toLocaleDateString() : 'today'}
           </p>
           {onRegenerate && (
             <button
               onClick={onRegenerate}
-              className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm sm:text-base rounded-full transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
             >
               Generate Plan
             </button>
@@ -50,13 +51,28 @@ export default function DailyPlanView({
     )
   }
 
+  // Helper function to format date strings
+  const formatDate = (dateString: string) => {
+    // Parse date string as local date (not UTC) to avoid timezone issues
+    const [year, month, day] = dateString.split('T')[0].split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+
   // Check if plan is for the expected date
   // Handle different date formats: Date object, ISO string, or date string
   let planDateStr: string
-  if (plan.plan_date instanceof Date) {
-    const year = plan.plan_date.getFullYear()
-    const month = String(plan.plan_date.getMonth() + 1).padStart(2, '0')
-    const day = String(plan.plan_date.getDate()).padStart(2, '0')
+  // Use type assertion for runtime instanceof check since TypeScript types plan_date as string
+  const planDate = plan.plan_date as any
+  if (planDate instanceof Date) {
+    const year = planDate.getFullYear()
+    const month = String(planDate.getMonth() + 1).padStart(2, '0')
+    const day = String(planDate.getDate()).padStart(2, '0')
     planDateStr = `${year}-${month}-${day}`
   } else if (typeof plan.plan_date === 'string') {
     planDateStr = plan.plan_date.split('T')[0] // Handle ISO strings
@@ -68,18 +84,19 @@ export default function DailyPlanView({
   console.log('DailyPlanView - datesMatch:', datesMatch, 'Will show mismatch UI:', expectedDate && !datesMatch)
   if (expectedDate && !datesMatch) {
     return (
-      <div className="rounded-lg bg-white p-6 shadow-sm">
-        <div className="text-center py-8">
-          <p className="text-gray-500 mb-4">
+      <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="relative z-10 text-center py-8">
+          <p className="text-gray-700 mb-4">
             Plan shown is for {formatDate(planDateStr)}, but today is {formatDate(expectedDate)}
           </p>
-          <p className="text-sm text-gray-400 mb-4">
+          <p className="text-sm text-gray-500 mb-4">
             Plan date: {planDateStr} | Expected: {expectedDate}
           </p>
           {onRegenerate ? (
             <button
               onClick={onRegenerate}
-              className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm sm:text-base rounded-full transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
             >
               Generate Plan for Today
             </button>
@@ -89,18 +106,6 @@ export default function DailyPlanView({
         </div>
       </div>
     )
-  }
-
-  const formatDate = (dateString: string) => {
-    // Parse date string as local date (not UTC) to avoid timezone issues
-    const [year, month, day] = dateString.split('T')[0].split('-').map(Number)
-    const date = new Date(year, month - 1, day)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
   }
 
   const formatTime = (timeString: string) => {
@@ -140,37 +145,47 @@ export default function DailyPlanView({
   })
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Daily Plan</h3>
-          <p className="text-sm text-gray-600">
-            {formatDate(planDateStr)}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {plan.energy_level && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Energy:</span>
-              <div
-                className={`rounded-full px-3 py-1 text-sm font-medium ${getEnergyLevelColor(plan.energy_level)}`}
-              >
-                {plan.energy_level}/5
+    <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="relative z-10">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="text-lg sm:text-xl font-bold mb-1">
+              <span className="gradient-text">Daily Plan</span>
+            </h3>
+            <p className="text-sm sm:text-base text-gray-700">
+              {formatDate(planDateStr)}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+            {plan.energy_level && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 font-medium">Energy:</span>
+                <div
+                  className={`rounded-full px-3 py-1.5 text-sm font-bold border-2 ${
+                    plan.energy_level <= 2
+                      ? 'bg-red-100 border-red-300 text-red-700'
+                      : plan.energy_level === 3
+                      ? 'bg-yellow-100 border-yellow-300 text-yellow-700'
+                      : 'bg-green-100 border-green-300 text-green-700'
+                  }`}
+                >
+                  {plan.energy_level}/5
+                </div>
               </div>
-            </div>
-          )}
-          {onRegenerate && (
-            <button
-              onClick={onRegenerate}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Regenerate
-            </button>
-          )}
+            )}
+            {onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-xs sm:text-sm rounded-full transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
+              >
+                Regenerate
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {sortedTasks.map((task, index) => {
           const taskStatus = taskStatuses[task.task_id] || (task as any).status || 'pending'
           const isDone = taskStatus === 'done'
@@ -179,44 +194,45 @@ export default function DailyPlanView({
           return (
             <div
               key={`${task.task_id}-${index}`}
-              className={`rounded-lg border p-4 ${
+              className={`rounded-xl border-2 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg animate-scale-in ${
                 isDone
                   ? 'border-gray-300 bg-gray-100 opacity-75'
                   : task.is_critical
-                  ? 'border-red-300 bg-red-50'
+                  ? 'border-red-400 bg-gradient-to-br from-red-50 to-pink-50 shadow-md'
                   : task.is_urgent
-                  ? 'border-orange-300 bg-orange-50'
-                  : 'border-gray-200 bg-gray-50'
+                  ? 'border-orange-400 bg-gradient-to-br from-orange-50 to-yellow-50 shadow-md'
+                  : 'border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50'
               }`}
+              style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className={`font-medium ${isDone ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className={`text-sm sm:text-base font-medium break-words ${isDone ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                       {task.title}
                     </h4>
                     {isDone && (
-                      <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-medium text-white">
+                      <span className="rounded-full bg-gradient-to-r from-green-500 to-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-md">
                         Done
                       </span>
                     )}
                     {isSnoozed && (
-                      <span className="rounded-full bg-yellow-600 px-2 py-0.5 text-xs font-medium text-white">
+                      <span className="rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 px-3 py-1 text-xs font-bold text-white shadow-md">
                         Snoozed
                       </span>
                     )}
                     {!isDone && !isSnoozed && task.is_critical && (
-                      <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
+                      <span className="rounded-full bg-gradient-to-r from-red-500 to-pink-500 px-3 py-1 text-xs font-bold text-white shadow-md">
                         Critical
                       </span>
                     )}
                     {!isDone && !isSnoozed && task.is_urgent && (
-                      <span className="rounded-full bg-orange-600 px-2 py-0.5 text-xs font-medium text-white">
+                      <span className="rounded-full bg-gradient-to-r from-orange-500 to-yellow-500 px-3 py-1 text-xs font-bold text-white shadow-md">
                         Urgent
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
                     <span>
                       {formatTime(task.predicted_start)} - {formatTime(task.predicted_end)}
                     </span>
@@ -224,7 +240,7 @@ export default function DailyPlanView({
                   </div>
                 </div>
                 {!isDone && (
-                  <div className="ml-4">
+                  <div className="w-full sm:w-auto sm:ml-4 flex justify-start sm:justify-end">
                     <TaskFeedback
                       taskId={task.task_id}
                       planId={plan.id}
@@ -245,9 +261,10 @@ export default function DailyPlanView({
         })}
       </div>
 
-      {sortedTasks.length === 0 && (
-        <div className="py-8 text-center text-gray-500">No tasks scheduled for this day</div>
-      )}
+        {sortedTasks.length === 0 && (
+          <div className="py-8 text-center text-gray-600 font-medium">No tasks scheduled for this day</div>
+        )}
+      </div>
     </div>
   )
 }

@@ -52,6 +52,23 @@ def generate_daily_plan(context: PlanningContext) -> DailyPlan:
             )
             # Continue without learning adjustments if analysis fails
     
+    # Handle empty task list
+    if not context.raw_tasks:
+        StructuredLogger.log_event(
+            "planner_no_tasks",
+            f"No tasks to plan for {context.plan_date.isoformat()}",
+            user_id=user_id or "unknown",
+            metadata={"plan_date": context.plan_date.isoformat()},
+        )
+        # Return empty plan
+        return DailyPlan(
+            user_id=UUID(user_id) if user_id else None,
+            plan_date=context.plan_date,
+            tasks=[],
+            energy_level=context.energy_level,
+            status="active"
+        )
+    
     # Score all tasks using reinforcement agent and apply learning adjustments
     scored_tasks = []
     for task in context.raw_tasks:
