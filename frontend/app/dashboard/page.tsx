@@ -8,6 +8,7 @@ import { DailyPlan, EnergyLevel } from '@/src/types/plan'
 import { createClient } from '@/src/lib/supabase/client'
 import EnergyLevelInput from '@/components/EnergyLevelInput'
 import DailyPlanView from '@/components/DailyPlanView'
+import NotificationCenter from '@/components/NotificationCenter'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -234,7 +235,12 @@ export default function DashboardPage() {
             onRegenerate={handleGeneratePlan}
             loading={planLoading}
             expectedDate={today}
+            onTaskUpdated={loadDailyPlan}
           />
+        </div>
+
+        <div className="mb-6">
+          <NotificationCenter autoRefresh={true} refreshInterval={30000} />
         </div>
 
         {error && (

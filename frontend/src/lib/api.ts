@@ -172,6 +172,32 @@ class ApiClient {
     return response.data
   }
 
+  // Notification endpoints
+  async getNotifications(status?: string, limit?: number) {
+    const params: any = {}
+    if (status) params.status = status
+    if (limit) params.limit = limit
+    const response = await this.client.get('/api/notifications', { params })
+    return response.data
+  }
+
+  async getPendingNotifications(limit?: number) {
+    const params: any = {}
+    if (limit) params.limit = limit
+    const response = await this.client.get('/api/notifications/pending', { params })
+    return response.data
+  }
+
+  async dismissNotification(notificationId: string) {
+    const response = await this.client.post(`/api/notifications/${notificationId}/dismiss`)
+    return response.data
+  }
+
+  async getNotification(notificationId: string) {
+    const response = await this.client.get(`/api/notifications/${notificationId}`)
+    return response.data
+  }
+
   // Health check
   async healthCheck() {
     const response = await this.client.get('/api/health')

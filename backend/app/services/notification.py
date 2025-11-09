@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from app.database import supabase
 from app.models.notification import Notification, NotificationCreate, NotificationResponse
+from app.services.email import EmailService
 from app.utils.monitoring import StructuredLogger
 
 
@@ -61,7 +62,7 @@ class NotificationService:
     @staticmethod
     def send_notification(notification_id: UUID) -> bool:
         """
-        Mark a notification as sent
+        Send notification (in-app and email) and mark as sent
         
         Args:
             notification_id: ID of the notification to send
@@ -70,6 +71,63 @@ class NotificationService:
             True if successful, False otherwise
         """
         try:
+            # Get notification details
+            notification_response = supabase.table("notifications").select("*").eq("id", str(notification_id)).execute()
+            
+            if not notification_response.data:
+                return False
+            
+            notification_data = notification_response.data[0]
+            user_id = notification_data["user_id"]
+            task_id = notification_data["task_id"]
+            message = notification_data["message"]
+            scheduled_at = notification_data["scheduled_at"]
+            
+            # Get task details for email
+            task_response = supabase.table("raw_tasks").select("title, start_time, is_critical, is_urgent").eq("id", task_id).execute()
+            task_data = task_response.data[0] if task_response.data else {}
+            task_title = task_data.get("title", "Task")
+            is_critical = task_data.get("is_critical", False)
+            is_urgent = task_data.get("is_urgent", False)
+            
+            # Format task time
+            task_time = scheduled_at
+            try:
+                scheduled_dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+                task_time = scheduled_dt.strftime("%I:%M %p")
+            except Exception:
+                pass
+            
+            # Send email notification
+            try:
+                user_email = EmailService.get_user_email(user_id)
+                if user_email:
+                    email_sent = EmailService.send_task_nudge_email(
+                        user_email=user_email,
+                        task_title=task_title,
+                        task_time=task_time,
+                        is_critical=is_critical,
+                        is_urgent=is_urgent,
+                    )
+                    if email_sent:
+                        StructuredLogger.log_event(
+                            "email_nudge_sent",
+                            f"Email notification sent to {user_email}",
+                            user_id=user_id,
+                            metadata={
+                                "notification_id": str(notification_id),
+                                "task_id": task_id,
+                                "user_email": user_email,
+                            },
+                        )
+            except Exception as e:
+                StructuredLogger.log_error(
+                    e,
+                    context={"function": "send_notification_email", "notification_id": str(notification_id)},
+                )
+                # Continue even if email fails - in-app notification still works
+            
+            # Mark notification as sent in database
             now = datetime.utcnow()
             response = supabase.table("notifications").update({
                 "status": "sent",
@@ -78,15 +136,14 @@ class NotificationService:
             }).eq("id", str(notification_id)).execute()
             
             if response.data:
-                data = response.data[0]
                 StructuredLogger.log_event(
                     "nudge_sent",
                     f"Notification {notification_id} sent",
-                    user_id=str(data["user_id"]),
+                    user_id=user_id,
                     metadata={
                         "notification_id": str(notification_id),
-                        "task_id": str(data["task_id"]),
-                        "type": data["type"],
+                        "task_id": task_id,
+                        "type": notification_data["type"],
                     },
                 )
                 return True
