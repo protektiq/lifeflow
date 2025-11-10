@@ -10,6 +10,7 @@ import EnergyLevelInput from '@/components/EnergyLevelInput'
 import DailyPlanView from '@/components/DailyPlanView'
 import RemindersView from '@/components/RemindersView'
 import NotificationCenter from '@/components/NotificationCenter'
+import TaskManagerIntegration from '@/components/TaskManagerIntegration'
 import RawTasksView from '@/components/RawTasksView'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<RawTask[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [syncingEmail, setSyncingEmail] = useState(false)
+  const [refreshingMetrics, setRefreshingMetrics] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [metrics, setMetrics] = useState<any>(null)
@@ -114,6 +117,31 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
       setSyncing(false)
+    }
+  }
+
+  const handleSyncEmail = async () => {
+    try {
+      setSyncingEmail(true)
+      setError(null)
+      await apiClient.syncEmail()
+      await loadTasks()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Email sync failed')
+    } finally {
+      setSyncingEmail(false)
+    }
+  }
+
+  const handleRefreshMetrics = async () => {
+    try {
+      setRefreshingMetrics(true)
+      setError(null)
+      await loadMetrics()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh metrics')
+    } finally {
+      setRefreshingMetrics(false)
     }
   }
 
@@ -229,7 +257,7 @@ export default function DashboardPage() {
               <h2 className="text-xl sm:text-2xl font-bold mb-2">
                 <span className="gradient-text">Calendar Integration</span>
               </h2>
-              <p className="text-sm sm:text-base text-gray-700 mb-4">Connect and sync your Google Calendar events</p>
+              <p className="text-sm sm:text-base text-gray-700 mb-4">Connect and sync your Google Calendar events and emails</p>
               <div className="space-y-3">
                 <button
                   onClick={handleConnectGoogle}
@@ -239,10 +267,17 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={handleSync}
-                  disabled={syncing}
+                  disabled={syncing || syncingEmail}
                   className="group relative w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm sm:text-base rounded-full overflow-hidden transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   <span className="relative z-10">{syncing ? 'Syncing...' : 'Sync Calendar'}</span>
+                </button>
+                <button
+                  onClick={handleSyncEmail}
+                  disabled={syncing || syncingEmail}
+                  className="group relative w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-sm sm:text-base rounded-full overflow-hidden transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-blue-500/50 focus:outline-none focus:ring-4 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  <span className="relative z-10">{syncingEmail ? 'Syncing...' : 'Sync Email'}</span>
                 </button>
               </div>
             </div>
@@ -252,9 +287,19 @@ export default function DashboardPage() {
             <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in" style={{ animationDelay: '100ms' }}>
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative z-10">
-                <h2 className="text-xl sm:text-2xl font-bold mb-4">
-                  <span className="gradient-text">Ingestion Metrics</span>
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl sm:text-2xl font-bold">
+                    <span className="gradient-text">Ingestion Metrics</span>
+                  </h2>
+                  <button
+                    onClick={handleRefreshMetrics}
+                    disabled={refreshingMetrics}
+                    className="px-3 py-1.5 text-xs sm:text-sm font-semibold text-purple-700 bg-purple-100 rounded-full border-2 border-purple-300 transition-all duration-300 hover:bg-purple-200 hover:border-purple-400 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    aria-label="Refresh metrics"
+                  >
+                    {refreshingMetrics ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
                 <div className="space-y-3 text-sm sm:text-base">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700">Success Rate:</span>
@@ -291,6 +336,10 @@ export default function DashboardPage() {
             expectedDate={today}
             onTaskUpdated={loadDailyPlan}
           />
+        </div>
+
+        <div className="mb-4 sm:mb-6">
+          <TaskManagerIntegration />
         </div>
 
         <div className="mb-4 sm:mb-6 grid gap-4 sm:gap-6 md:grid-cols-2">

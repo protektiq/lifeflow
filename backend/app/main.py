@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import auth, ingestion, tasks, energy_level, plans, feedback, notifications, reminders
+from app.api import auth, ingestion, tasks, energy_level, plans, feedback, notifications, reminders, task_manager
 from app.utils.monitoring import ingestion_metrics
 from app.utils.scheduler import start_scheduler, shutdown_scheduler
 from contextlib import asynccontextmanager
@@ -42,6 +42,7 @@ app.include_router(plans.router, prefix="/api/plans", tags=["plans"])
 app.include_router(reminders.router, prefix="/api/reminders", tags=["reminders"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["feedback"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+app.include_router(task_manager.router, prefix="/api/task-manager", tags=["task-manager"])
 
 
 @app.get("/api/health")

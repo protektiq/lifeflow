@@ -17,6 +17,9 @@ export default function NotificationCenter({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
+  const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null)
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
   const loadNotifications = async () => {
     try {
@@ -48,6 +51,44 @@ export default function NotificationCenter({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to dismiss notification')
     }
+  }
+
+  const handleNotificationClick = async (notificationId: string, e: React.MouseEvent) => {
+    // Don't open detail if clicking dismiss button
+    const target = e.target as HTMLElement
+    if (target.closest('button')) {
+      return
+    }
+    
+    try {
+      setLoadingDetail(true)
+      setSelectedNotificationId(notificationId)
+      const detail = await apiClient.getNotification(notificationId)
+      setSelectedNotification(detail)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load notification details')
+      setSelectedNotificationId(null)
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
+
+  const handleCloseDetail = () => {
+    setSelectedNotificationId(null)
+    setSelectedNotification(null)
+  }
+
+  const formatDateTime = (timeString: string) => {
+    const date = new Date(timeString)
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
   }
 
   const formatTime = (timeString: string) => {
@@ -125,11 +166,14 @@ export default function NotificationCenter({
             displayedNotifications.map((notification, index) => {
               const isCritical = notification.message.includes('CRITICAL')
               const isUrgent = notification.message.includes('URGENT')
+              const detailIsCritical = selectedNotification?.message.includes('CRITICAL')
+              const detailIsUrgent = selectedNotification?.message.includes('URGENT')
               
               return (
                 <div
                   key={notification.id}
-                  className={`rounded-xl border-2 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg animate-scale-in ${getNotificationColor(
+                  onClick={(e) => handleNotificationClick(notification.id, e)}
+                  className={`rounded-xl border-2 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg animate-scale-in cursor-pointer ${getNotificationColor(
                     notification.type,
                     isCritical,
                     isUrgent
@@ -168,6 +212,126 @@ export default function NotificationCenter({
           )}
         </div>
       </div>
+
+      {/* Notification Detail Modal */}
+      {selectedNotificationId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="rounded-2xl bg-white shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {loadingDetail ? (
+              <div className="p-8 flex items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+              </div>
+            ) : selectedNotification ? (
+              <>
+                <div className="sticky top-0 bg-white border-b-2 border-purple-200 p-4 sm:p-6 flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="text-2xl flex-shrink-0">
+                        {getNotificationIcon(selectedNotification.type, detailIsCritical, detailIsUrgent)}
+                      </span>
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
+                        Notification Details
+                      </h2>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCloseDetail}
+                    className="ml-4 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                    aria-label="Close"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="p-4 sm:p-6 space-y-4">
+                  <div className={`rounded-lg border-2 p-4 ${getNotificationColor(selectedNotification.type, detailIsCritical, detailIsUrgent)}`}>
+                    <p className="text-base sm:text-lg font-medium text-gray-900 break-words mb-4">
+                      {selectedNotification.message}
+                    </p>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">Type:</span>
+                        <span className="text-gray-600 capitalize">{selectedNotification.type}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">Status:</span>
+                        <span className="text-gray-600 capitalize">{selectedNotification.status}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">Scheduled:</span>
+                        <span className="text-gray-600">{formatDateTime(selectedNotification.scheduled_at)}</span>
+                      </div>
+                      {selectedNotification.sent_at && (
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-gray-700">Sent:</span>
+                          <span className="text-gray-600">{formatDateTime(selectedNotification.sent_at)}</span>
+                        </div>
+                      )}
+                      {selectedNotification.task_id && (
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-gray-700">Task ID:</span>
+                          <span className="text-gray-600 font-mono text-xs break-all">{selectedNotification.task_id}</span>
+                        </div>
+                      )}
+                      {selectedNotification.plan_id && (
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-gray-700">Plan ID:</span>
+                          <span className="text-gray-600 font-mono text-xs break-all">{selectedNotification.plan_id}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">Created:</span>
+                        <span className="text-gray-600">{formatDateTime(selectedNotification.created_at)}</span>
+                      </div>
+                      {selectedNotification.updated_at && (
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-gray-700">Updated:</span>
+                          <span className="text-gray-600">{formatDateTime(selectedNotification.updated_at)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sticky bottom-0 bg-white border-t-2 border-purple-200 p-4 sm:p-6">
+                  <div className="flex gap-3">
+                    {selectedNotification.status !== 'dismissed' && (
+                      <button
+                        onClick={() => {
+                          handleDismiss(selectedNotification.id)
+                          handleCloseDetail()
+                        }}
+                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-full transition-all duration-300 hover:bg-gray-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-400/50"
+                      >
+                        Dismiss
+                      </button>
+                    )}
+                    <button
+                      onClick={handleCloseDetail}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-6 text-center">
+                <p className="text-red-600 mb-4">Failed to load notification details</p>
+                <button
+                  onClick={handleCloseDetail}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-full font-semibold hover:bg-purple-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

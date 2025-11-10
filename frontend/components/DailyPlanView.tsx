@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { DailyPlan, DailyPlanTask } from '@/src/types/plan'
 import TaskFeedback from './TaskFeedback'
+import PlansHistory from './PlansHistory'
+import { apiClient } from '@/src/lib/api'
+import { History } from 'lucide-react'
 
 interface DailyPlanViewProps {
   plan: DailyPlan | null
@@ -20,6 +23,8 @@ export default function DailyPlanView({
   onTaskUpdated,
 }: DailyPlanViewProps) {
   const [taskStatuses, setTaskStatuses] = useState<Record<string, string>>({})
+  const [showHistory, setShowHistory] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
   if (loading) {
     return (
       <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-lg animate-scale-in">
@@ -131,12 +136,74 @@ export default function DailyPlanView({
     return 'bg-green-200'
   }
 
-  const sortedTasks = [...plan.tasks].sort(
+  // Filter out spam/promotional tasks
+  // This is a safety measure in case API filtering didn't catch everything
+  const isPromotionalTask = (title: string): boolean => {
+    const titleLower = title.toLowerCase()
+    
+    // Promotional phrases that indicate spam
+    const promotionalPatterns = [
+      'consider purchasing',
+      'purchasing the',
+      'lifetime membership',
+      'percent off',
+      '% off',
+      'snag your spot',
+      'art in action',
+      'start bidding',
+      'review the rachael ray',
+      'rachael ray nutrish',
+      'dry dog food',
+      'activate the',
+      'activate your',
+      'limited-time offer',
+      'limited time offer',
+      'statement credits',
+      'earn back',
+      'earn 5%',
+      'earn 5 %',
+    ]
+    
+    // Check if title contains promotional patterns
+    for (const pattern of promotionalPatterns) {
+      if (titleLower.includes(pattern)) {
+        return true
+      }
+    }
+    
+    // Check for very long product review titles (likely promotional)
+    if (titleLower.includes('review the') && title.length > 60) {
+      // Check for product-related words
+      const productWords = ['product', 'dry', 'food', 'protein', 'high', 'stages', 'beef', 'venison', 'lamb']
+      if (productWords.some(word => titleLower.includes(word))) {
+        return true
+      }
+    }
+    
+    return false
+  }
+  
+  const filteredTasks = plan.tasks.filter((task) => {
+    // If task has spam flag, exclude it
+    if ((task as any).is_spam === true) {
+      return false
+    }
+    
+    // Check title for promotional patterns (fallback detection)
+    if (isPromotionalTask(task.title)) {
+      console.log('DailyPlanView - Filtering promotional task:', task.title)
+      return false
+    }
+    
+    return true
+  })
+  
+  const sortedTasks = [...filteredTasks].sort(
     (a, b) => new Date(a.predicted_start).getTime() - new Date(b.predicted_start).getTime()
   )
   
   // Debug: Log task dates
-  console.log('DailyPlanView - Plan tasks count:', sortedTasks.length)
+  console.log('DailyPlanView - Plan tasks count:', sortedTasks.length, '(filtered from', plan.tasks.length, 'total)')
   sortedTasks.forEach((t, idx) => {
     const startDate = t.predicted_start ? new Date(t.predicted_start) : null
     const dateStr = startDate ? startDate.toLocaleDateString() : 'N/A'
@@ -148,16 +215,37 @@ export default function DailyPlanView({
     <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       <div className="relative z-10">
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h3 className="text-lg sm:text-xl font-bold mb-1">
+        {/* Header Row: Title and History */}
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-bold">
               <span className="gradient-text">Daily Plan</span>
             </h3>
-            <p className="text-sm sm:text-base text-gray-700">
-              {formatDate(planDateStr)}
-            </p>
+            <button
+              onClick={() => setShowHistory(true)}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-purple-700 bg-purple-100 rounded-full border-2 border-purple-300 transition-all duration-300 hover:bg-purple-200 hover:border-purple-400 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
+              aria-label="View plans history"
+            >
+              <History className="h-3 w-3" />
+              <span className="hidden sm:inline">History</span>
+            </button>
           </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          {onRegenerate && (
+            <button
+              onClick={onRegenerate}
+              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-xs sm:text-sm rounded-full transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50 whitespace-nowrap"
+            >
+              Regenerate
+            </button>
+          )}
+        </div>
+
+        {/* Second Row: Date and Status Controls */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm sm:text-base text-gray-700">
+            {formatDate(planDateStr)}
+          </p>
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             {plan.energy_level && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-700 font-medium">Energy:</span>
@@ -174,14 +262,29 @@ export default function DailyPlanView({
                 </div>
               </div>
             )}
-            {onRegenerate && (
-              <button
-                onClick={onRegenerate}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-xs sm:text-sm rounded-full transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700 font-medium">Status:</span>
+              <select
+                value={plan.status}
+                onChange={async (e) => {
+                  try {
+                    setUpdatingStatus(true)
+                    await apiClient.updatePlanStatus(plan.id, e.target.value)
+                    onTaskUpdated?.()
+                  } catch (err) {
+                    console.error('Failed to update plan status:', err)
+                  } finally {
+                    setUpdatingStatus(false)
+                  }
+                }}
+                disabled={updatingStatus}
+                className="rounded-full px-3 py-1.5 text-sm font-bold border-2 bg-white border-purple-300 text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Regenerate
-              </button>
-            )}
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -238,6 +341,23 @@ export default function DailyPlanView({
                     </span>
                     <span className="text-xs">Priority: {(task.priority_score * 100).toFixed(0)}%</span>
                   </div>
+                  
+                  {/* Display action plan steps if available */}
+                  {task.action_plan && task.action_plan.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="text-xs font-semibold text-gray-700 mb-2">Action Plan:</div>
+                      <ol className="space-y-1.5">
+                        {task.action_plan.map((step, stepIndex) => (
+                          <li key={stepIndex} className="flex items-start gap-2 text-xs text-gray-600">
+                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 text-white flex items-center justify-center text-[10px] font-bold mt-0.5">
+                              {stepIndex + 1}
+                            </span>
+                            <span className="flex-1">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                 </div>
                 {!isDone && (
                   <div className="w-full sm:w-auto sm:ml-4 flex justify-start sm:justify-end">
@@ -265,6 +385,17 @@ export default function DailyPlanView({
           <div className="py-8 text-center text-gray-600 font-medium">No tasks scheduled for this day</div>
         )}
       </div>
+
+      {/* Plans History Modal */}
+      {showHistory && (
+        <PlansHistory
+          onClose={() => setShowHistory(false)}
+          onPlanSelect={(selectedPlan) => {
+            // Optionally handle plan selection
+            console.log('Selected plan:', selectedPlan)
+          }}
+        />
+      )}
     </div>
   )
 }

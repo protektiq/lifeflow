@@ -1,4 +1,4 @@
-"""Calendar ingestion API endpoints"""
+"""Calendar and Email ingestion API endpoints"""
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Optional
 from app.agents.orchestration.workflow import run_ingestion_workflow
@@ -24,11 +24,11 @@ async def get_authenticated_user(credentials: HTTPAuthorizationCredentials = Dep
 
 @router.post("/calendar/sync")
 async def sync_calendar(user = Depends(get_authenticated_user)):
-    """Trigger calendar sync workflow"""
+    """Trigger calendar and email sync workflow (includes both calendar events and emails)"""
     try:
         StructuredLogger.log_event(
             "calendar_sync_requested",
-            "Calendar sync requested",
+            "Calendar and email sync requested",
             user_id=user.id,
         )
         
@@ -37,14 +37,14 @@ async def sync_calendar(user = Depends(get_authenticated_user)):
         if result["success"]:
             StructuredLogger.log_event(
                 "calendar_sync_success",
-                f"Calendar sync completed: {result['event_count']} events ingested",
+                f"Calendar and email sync completed: {result['event_count']} items ingested",
                 user_id=user.id,
                 metadata=result,
             )
         else:
             StructuredLogger.log_event(
                 "calendar_sync_failed",
-                "Calendar sync failed",
+                "Calendar and email sync failed",
                 user_id=user.id,
                 metadata=result,
                 level="ERROR",
@@ -61,7 +61,51 @@ async def sync_calendar(user = Depends(get_authenticated_user)):
         StructuredLogger.log_error(e, context={"user_id": user.id, "endpoint": "sync_calendar"})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Calendar sync failed: {str(e)}",
+            detail=f"Calendar and email sync failed: {str(e)}",
+        )
+
+
+@router.post("/email/sync")
+async def sync_email(user = Depends(get_authenticated_user)):
+    """Trigger email sync workflow (includes both calendar events and emails)"""
+    try:
+        StructuredLogger.log_event(
+            "email_sync_requested",
+            "Email sync requested",
+            user_id=user.id,
+        )
+        
+        # Use the same workflow which now includes email ingestion
+        result = await run_ingestion_workflow(user.id)
+        
+        if result["success"]:
+            StructuredLogger.log_event(
+                "email_sync_success",
+                f"Email sync completed: {result['event_count']} items ingested",
+                user_id=user.id,
+                metadata=result,
+            )
+        else:
+            StructuredLogger.log_event(
+                "email_sync_failed",
+                "Email sync failed",
+                user_id=user.id,
+                metadata=result,
+                level="ERROR",
+            )
+        
+        return {
+            "success": result["success"],
+            "status": result["status"],
+            "events_ingested": result["event_count"],
+            "errors": result.get("errors", []),
+            "metrics": ingestion_metrics.get_metrics(),
+        }
+    except Exception as e:
+        StructuredLogger.log_error(e, context={"user_id": user.id, "endpoint": "sync_email"})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Email sync failed: {str(e)}",
         )
 
 

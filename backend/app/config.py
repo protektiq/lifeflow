@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
     
+    # Todoist OAuth Configuration
+    TODOIST_CLIENT_ID: str = ""
+    TODOIST_CLIENT_SECRET: str = ""
+    TODOIST_REDIRECT_URI: str = "http://localhost:8000/api/auth/todoist/callback"
+    
     # OpenAI Configuration
     OPENAI_API_KEY: str
     

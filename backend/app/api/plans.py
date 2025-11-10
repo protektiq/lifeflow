@@ -16,6 +16,37 @@ router = APIRouter()
 security = HTTPBearer()
 
 
+def filter_spam_tasks_from_plan(tasks: List[dict], user_id: str) -> List[dict]:
+    """Filter out spam tasks from a plan's task list"""
+    if not tasks:
+        return tasks
+    
+    # Get task IDs from plan tasks
+    task_ids = [task.get("task_id") for task in tasks if task.get("task_id")]
+    
+    if not task_ids:
+        return tasks
+    
+    # Check which tasks are spam
+    spam_check = supabase.table("raw_tasks").select("id, is_spam").in_(
+        "id", task_ids
+    ).eq("user_id", user_id).execute()
+    
+    # Create set of spam task IDs (handle both True and NULL/False)
+    spam_task_ids = {
+        str(task["id"]) for task in spam_check.data 
+        if task.get("is_spam") is True  # Explicitly check for True (not just truthy)
+    }
+    
+    # Filter out spam tasks
+    filtered_tasks = [
+        task for task in tasks 
+        if str(task.get("task_id")) not in spam_task_ids
+    ]
+    
+    return filtered_tasks
+
+
 class PlanGenerateRequest(BaseModel):
     """Plan generation request"""
     plan_date: date
@@ -61,11 +92,15 @@ async def generate_plan(
             )
         
         plan_data = response.data[0]
+        
+        # Filter out spam tasks from the plan
+        tasks = filter_spam_tasks_from_plan(plan_data.get("tasks", []), user.id)
+        
         return DailyPlanResponse(
             id=plan_data["id"],
             user_id=plan_data["user_id"],
             plan_date=date.fromisoformat(plan_data["plan_date"]),
-            tasks=plan_data["tasks"],
+            tasks=tasks,
             energy_level=plan_data.get("energy_level"),
             status=plan_data["status"],
             generated_at=datetime.fromisoformat(plan_data["generated_at"].replace("Z", "+00:00")),
@@ -96,11 +131,15 @@ async def get_plan_for_date(
             return None
         
         plan_data = response.data[0]
+        
+        # Filter out spam tasks from the plan
+        tasks = filter_spam_tasks_from_plan(plan_data.get("tasks", []), user.id)
+        
         return DailyPlanResponse(
             id=plan_data["id"],
             user_id=plan_data["user_id"],
             plan_date=date.fromisoformat(plan_data["plan_date"]),
-            tasks=plan_data["tasks"],
+            tasks=tasks,
             energy_level=plan_data.get("energy_level"),
             status=plan_data["status"],
             generated_at=datetime.fromisoformat(plan_data["generated_at"].replace("Z", "+00:00")),
@@ -134,12 +173,13 @@ async def get_plans(
         
         response = query.execute()
         
+        # Filter spam tasks from all plans
         return [
             DailyPlanResponse(
                 id=item["id"],
                 user_id=item["user_id"],
                 plan_date=date.fromisoformat(item["plan_date"]),
-                tasks=item["tasks"],
+                tasks=filter_spam_tasks_from_plan(item.get("tasks", []), user.id),
                 energy_level=item.get("energy_level"),
                 status=item["status"],
                 generated_at=datetime.fromisoformat(item["generated_at"].replace("Z", "+00:00")),
@@ -181,11 +221,15 @@ async def update_plan_status(
         }).eq("id", plan_id).execute()
         
         plan_data = response.data[0]
+        
+        # Filter out spam tasks from the plan
+        tasks = filter_spam_tasks_from_plan(plan_data.get("tasks", []), user.id)
+        
         return DailyPlanResponse(
             id=plan_data["id"],
             user_id=plan_data["user_id"],
             plan_date=date.fromisoformat(plan_data["plan_date"]),
-            tasks=plan_data["tasks"],
+            tasks=tasks,
             energy_level=plan_data.get("energy_level"),
             status=plan_data["status"],
             generated_at=datetime.fromisoformat(plan_data["generated_at"].replace("Z", "+00:00")),

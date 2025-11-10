@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { RawTask } from '@/src/types/task'
 import { Calendar, Clock, MapPin, Users, Search, Filter, ChevronDown, ChevronRight } from 'lucide-react'
+import TaskDetailView from './TaskDetailView'
 
 interface RawTasksViewProps {
   tasks: RawTask[]
@@ -29,6 +30,7 @@ export default function RawTasksView({
   const [sortOption, setSortOption] = useState<SortOption>('date-asc')
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
   const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set())
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   // Date formatting utilities
   // Helper to get local date from ISO string (handles timezone conversion)
@@ -232,6 +234,19 @@ export default function RawTasksView({
     await onTaskFlagsUpdate(taskId, { [flagType]: !currentValue })
   }
 
+  const handleTaskClick = (taskId: string, e: React.MouseEvent) => {
+    // Don't open detail view if clicking on toggle switches or buttons
+    const target = e.target as HTMLElement
+    if (target.closest('label') || target.closest('input[type="checkbox"]') || target.closest('button')) {
+      return
+    }
+    setSelectedTaskId(taskId)
+  }
+
+  const handleCloseDetail = () => {
+    setSelectedTaskId(null)
+  }
+
   if (loading) {
     return (
       <div className="rounded-2xl bg-white shadow-lg animate-scale-in">
@@ -397,7 +412,8 @@ export default function RawTasksView({
                           return (
                             <div
                               key={task.id}
-                              className={`rounded-xl border-2 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg animate-scale-in ${cardBgColor}`}
+                              onClick={(e) => handleTaskClick(task.id, e)}
+                              className={`rounded-xl border-2 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg animate-scale-in cursor-pointer ${cardBgColor}`}
                               style={{ animationDelay: `${taskIndex * 30}ms` }}
                             >
                               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -559,6 +575,18 @@ export default function RawTasksView({
           )}
         </div>
       </div>
+
+      {/* Task Detail Modal */}
+      {selectedTaskId && (
+        <TaskDetailView
+          taskId={selectedTaskId}
+          onClose={handleCloseDetail}
+          onTaskUpdated={() => {
+            // Optionally refresh tasks when task is updated
+            handleCloseDetail()
+          }}
+        />
+      )}
     </div>
   )
 }

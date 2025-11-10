@@ -14,6 +14,14 @@ class DailyPlanTask(BaseModel):
     title: str
     is_critical: bool = False
     is_urgent: bool = False
+    action_plan: Optional[List[str]] = None  # List of actionable steps to complete the task
+    description: Optional[str] = None  # Original task description for context
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            UUID: lambda v: str(v)
+        }
 
 
 class DailyPlan(BaseModel):

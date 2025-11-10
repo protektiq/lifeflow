@@ -8,7 +8,12 @@ from app.agents.perception.calendar_ingestion import (
 )
 from app.agents.perception.nlp_extraction import (
     extract_raw_tasks_from_events,
+    extract_raw_tasks_from_emails,
     NLPExtractionError,
+)
+from app.agents.perception.email_ingestion import (
+    fetch_gmail_messages,
+    EmailIngestionError,
 )
 from app.models.task import RawTaskCreate
 from app.database import supabase
@@ -26,6 +31,8 @@ class WorkflowState(TypedDict):
     user_id: str
     oauth_token: Optional[str]
     calendar_events: List[dict]
+    email_messages: List[dict]
+    email_tasks: List[RawTaskCreate]
     raw_tasks: List[RawTaskCreate]
     errors: List[str]
     status: str
@@ -106,25 +113,100 @@ async def ingestion_node(state: WorkflowState) -> WorkflowState:
         }
 
 
-async def extraction_node(state: WorkflowState) -> WorkflowState:
-    """Transform events to Raw Tasks"""
+async def email_ingestion_node(state: WorkflowState) -> WorkflowState:
+    """Fetch emails via Gmail API"""
     user_id = state["user_id"]
-    events = state["calendar_events"]
+    
+    try:
+        StructuredLogger.log_event(
+            "workflow_email_ingestion_start",
+            "Starting email ingestion",
+            user_id=user_id,
+        )
+        
+        # Fetch unread and flagged emails (excluding spam)
+        emails = await fetch_gmail_messages(user_id, query='is:unread OR is:flagged -is:spam')
+        
+        return {
+            **state,
+            "status": "email_ingested",
+            "email_messages": emails,
+        }
+    except EmailIngestionError as e:
+        StructuredLogger.log_error(e, context={"user_id": user_id, "node": "email_ingestion_node"})
+        return {
+            **state,
+            "status": "error",
+            "errors": state["errors"] + [f"Email ingestion failed: {str(e)}"],
+        }
+    except Exception as e:
+        StructuredLogger.log_error(e, context={"user_id": user_id, "node": "email_ingestion_node"})
+        return {
+            **state,
+            "status": "error",
+            "errors": state["errors"] + [f"Unexpected error during email ingestion: {str(e)}"],
+        }
+
+
+async def email_extraction_node(state: WorkflowState) -> WorkflowState:
+    """Transform emails to Raw Tasks"""
+    user_id = state["user_id"]
+    emails = state.get("email_messages", [])
+    
+    try:
+        StructuredLogger.log_event(
+            "workflow_email_extraction_start",
+            "Starting email NLP extraction",
+            user_id=user_id,
+            metadata={"email_count": len(emails)},
+        )
+        
+        email_tasks = extract_raw_tasks_from_emails(emails, user_id)
+        
+        return {
+            **state,
+            "status": "email_extracted",
+            "email_tasks": email_tasks,
+        }
+    except NLPExtractionError as e:
+        StructuredLogger.log_error(e, context={"user_id": user_id, "node": "email_extraction_node"})
+        return {
+            **state,
+            "status": "error",
+            "errors": state["errors"] + [f"Email extraction failed: {str(e)}"],
+        }
+    except Exception as e:
+        StructuredLogger.log_error(e, context={"user_id": user_id, "node": "email_extraction_node"})
+        return {
+            **state,
+            "status": "error",
+            "errors": state["errors"] + [f"Unexpected error during email extraction: {str(e)}"],
+        }
+
+
+async def extraction_node(state: WorkflowState) -> WorkflowState:
+    """Transform events to Raw Tasks and merge with email tasks"""
+    user_id = state["user_id"]
+    events = state.get("calendar_events", [])
+    email_tasks = state.get("email_tasks", [])
     
     try:
         StructuredLogger.log_event(
             "workflow_extraction_start",
             "Starting NLP extraction",
             user_id=user_id,
-            metadata={"event_count": len(events)},
+            metadata={"event_count": len(events), "email_task_count": len(email_tasks)},
         )
         
-        raw_tasks = extract_raw_tasks_from_events(events, user_id)
+        calendar_tasks = extract_raw_tasks_from_events(events, user_id)
+        
+        # Merge calendar and email tasks
+        all_tasks = calendar_tasks + email_tasks
         
         return {
             **state,
             "status": "extracted",
-            "raw_tasks": raw_tasks,
+            "raw_tasks": all_tasks,
         }
     except NLPExtractionError as e:
         StructuredLogger.log_error(e, context={"user_id": user_id, "node": "extraction_node"})
@@ -161,15 +243,88 @@ async def storage_node(state: WorkflowState) -> WorkflowState:
         
         for raw_task in raw_tasks:
             try:
-                # Check for duplicates (by source, title, and start_time)
-                existing = supabase.table("raw_tasks").select("id").eq(
-                    "user_id", user_id
-                ).eq("source", raw_task.source).eq("title", raw_task.title).eq(
-                    "start_time", raw_task.start_time.isoformat()
-                ).execute()
+                # Check for duplicates
+                # For emails, use message_id from raw_data to prevent duplicates
+                # For calendar events, use source + title + start_time
+                existing = None
+                if raw_task.source == "gmail" and raw_task.raw_data:
+                    # Try to get message ID from raw_data (could be nested)
+                    message_id = None
+                    if isinstance(raw_task.raw_data, dict):
+                        message_id = raw_task.raw_data.get("id") or raw_task.raw_data.get("raw_data", {}).get("id")
+                    
+                    if message_id:
+                        # Check by email message ID (most reliable for emails)
+                        # Fetch all gmail tasks and check raw_data in Python (JSONB queries can be complex)
+                        all_gmail_tasks = supabase.table("raw_tasks").select("id, raw_data").eq(
+                            "user_id", user_id
+                        ).eq("source", "gmail").execute()
+                        
+                        for task in all_gmail_tasks.data:
+                            task_raw_data = task.get("raw_data", {})
+                            task_msg_id = None
+                            if isinstance(task_raw_data, dict):
+                                task_msg_id = task_raw_data.get("id") or task_raw_data.get("raw_data", {}).get("id")
+                            
+                            if task_msg_id == message_id:
+                                # Found duplicate - create mock response object
+                                class MockResponse:
+                                    def __init__(self, data):
+                                        self.data = data
+                                existing = MockResponse([task])
+                                break
+                
+                # Fallback to title + start_time check if no message_id
+                if not existing or not existing.data:
+                    existing = supabase.table("raw_tasks").select("id").eq(
+                        "user_id", user_id
+                    ).eq("source", raw_task.source).eq("title", raw_task.title).eq(
+                        "start_time", raw_task.start_time.isoformat()
+                    ).execute()
                 
                 if existing.data:
-                    # Skip duplicate
+                    # Found duplicate - update existing task if it's an email (to fix priority/spam issues)
+                    existing_id = existing.data[0].get("id")
+                    
+                    if raw_task.source == "gmail":
+                        # For emails, update the existing task to fix any classification issues
+                        # This allows re-processing to fix spam/priority misclassifications
+                        update_data = {
+                            "extracted_priority": raw_task.extracted_priority,
+                            "is_spam": raw_task.is_spam,
+                            "spam_reason": raw_task.spam_reason,
+                            "spam_score": raw_task.spam_score,
+                            "is_critical": raw_task.is_critical,
+                            "is_urgent": raw_task.is_urgent,
+                            "updated_at": datetime.utcnow().isoformat(),
+                        }
+                        
+                        # Only update if there are actual changes (avoid unnecessary updates)
+                        supabase.table("raw_tasks").update(update_data).eq("id", existing_id).execute()
+                        
+                        StructuredLogger.log_event(
+                            "task_duplicate_updated",
+                            f"Updated duplicate email task: {raw_task.title}",
+                            user_id=user_id,
+                            metadata={
+                                "title": raw_task.title,
+                                "existing_id": existing_id,
+                                "new_priority": raw_task.extracted_priority,
+                                "new_is_spam": raw_task.is_spam,
+                            },
+                        )
+                    else:
+                        # For calendar events, skip duplicates
+                        StructuredLogger.log_event(
+                            "task_duplicate_skipped",
+                            f"Skipping duplicate task: {raw_task.title}",
+                            user_id=user_id,
+                            metadata={
+                                "title": raw_task.title,
+                                "source": raw_task.source,
+                                "existing_id": existing_id,
+                            },
+                        )
                     continue
                 
                 # Insert raw task
@@ -203,6 +358,9 @@ async def storage_node(state: WorkflowState) -> WorkflowState:
                     "extracted_priority": raw_task.extracted_priority,
                     "is_critical": raw_task.is_critical,
                     "is_urgent": raw_task.is_urgent,
+                    "is_spam": raw_task.is_spam,
+                    "spam_reason": raw_task.spam_reason,
+                    "spam_score": raw_task.spam_score,
                     "raw_data": raw_task.raw_data,
                 }
                 
@@ -358,7 +516,23 @@ async def planning_node(state: WorkflowState) -> WorkflowState:
         # Convert raw tasks to dictionaries for planning context
         # Normalize task times to be on plan_date in local timezone
         task_dicts = []
+        skipped_spam_count = 0
         for raw_task in raw_tasks:
+            # Skip spam/promotional emails - they should not appear in daily plan
+            if raw_task.is_spam:
+                skipped_spam_count += 1
+                StructuredLogger.log_event(
+                    "planning_skip_spam_task",
+                    f"Skipping spam task '{raw_task.title}' from daily plan",
+                    user_id=user_id,
+                    metadata={
+                        "task_title": raw_task.title,
+                        "spam_reason": raw_task.spam_reason,
+                        "spam_score": raw_task.spam_score,
+                    },
+                )
+                continue
+            
             # Fetch task ID from database
             task_response = supabase.table("raw_tasks").select("id").eq(
                 "user_id", user_id
@@ -411,6 +585,15 @@ async def planning_node(state: WorkflowState) -> WorkflowState:
                 })
         
         if not task_dicts:
+            StructuredLogger.log_event(
+                "planning_no_tasks_after_filtering",
+                f"No tasks remaining after filtering (skipped {skipped_spam_count} spam tasks)",
+                user_id=user_id,
+                metadata={
+                    "skipped_spam": skipped_spam_count,
+                    "original_task_count": len(raw_tasks),
+                },
+            )
             return {
                 **state,
                 "status": "error",
@@ -439,6 +622,8 @@ async def planning_node(state: WorkflowState) -> WorkflowState:
                 "title": task.title,
                 "is_critical": task.is_critical,
                 "is_urgent": task.is_urgent,
+                "action_plan": task.action_plan,  # Include action plan steps
+                "description": task.description,  # Include original description
             }
             tasks_data.append(task_dict)
         
@@ -490,8 +675,17 @@ def should_continue(state: WorkflowState) -> str:
     if state["status"] == "error":
         return "end"
     elif state["status"] == "authenticated":
-        return "ingestion"
+        # Start both calendar and email ingestion in parallel
+        # We'll use conditional routing to handle both paths
+        return "ingestion"  # Calendar ingestion first, then email ingestion
     elif state["status"] == "ingested":
+        # After calendar ingestion, start email ingestion
+        return "email_ingestion"
+    elif state["status"] == "email_ingested":
+        # After email ingestion, extract tasks from emails
+        return "email_extraction"
+    elif state["status"] == "email_extracted":
+        # After email extraction, merge with calendar tasks
         return "extraction"
     elif state["status"] == "extracted":
         return "storage"
@@ -515,6 +709,8 @@ def create_ingestion_workflow():
     # Add nodes
     workflow.add_node("auth", auth_node)
     workflow.add_node("ingestion", ingestion_node)
+    workflow.add_node("email_ingestion", email_ingestion_node)
+    workflow.add_node("email_extraction", email_extraction_node)
     workflow.add_node("extraction", extraction_node)
     workflow.add_node("storage", storage_node)
     workflow.add_node("encoding", encoding_node)
@@ -535,6 +731,24 @@ def create_ingestion_workflow():
     
     workflow.add_conditional_edges(
         "ingestion",
+        should_continue,
+        {
+            "email_ingestion": "email_ingestion",
+            "end": END,
+        }
+    )
+    
+    workflow.add_conditional_edges(
+        "email_ingestion",
+        should_continue,
+        {
+            "email_extraction": "email_extraction",
+            "end": END,
+        }
+    )
+    
+    workflow.add_conditional_edges(
+        "email_extraction",
         should_continue,
         {
             "extraction": "extraction",
@@ -584,6 +798,8 @@ async def run_ingestion_workflow(user_id: str) -> dict:
         "user_id": user_id,
         "oauth_token": None,
         "calendar_events": [],
+        "email_messages": [],
+        "email_tasks": [],
         "raw_tasks": [],
         "errors": [],
         "status": "started",
@@ -656,9 +872,10 @@ async def run_planning_workflow(user_id: str, plan_date: date, energy_level: Opt
         }
     )
     
+    # Fetch tasks, excluding spam/promotional emails
     tasks_response = supabase.table("raw_tasks").select("*").eq(
         "user_id", user_id
-    ).gte("start_time", start_query).lt("start_time", end_query).execute()
+    ).eq("is_spam", False).gte("start_time", start_query).lt("start_time", end_query).execute()
     
     # Log fetched tasks
     if tasks_response.data:
@@ -691,8 +908,25 @@ async def run_planning_workflow(user_id: str, plan_date: date, energy_level: Opt
     raw_tasks = []
     reminders = []  # Collect reminders separately instead of filtering them out
     skipped_previous_day = 0
+    skipped_spam = 0
     
     for task_data in tasks_response.data:
+        # Skip spam/promotional emails - they should not appear in daily plan
+        is_spam = task_data.get("is_spam", False)
+        if is_spam:
+            skipped_spam += 1
+            StructuredLogger.log_event(
+                "planning_skip_spam",
+                f"Skipping spam task '{task_data.get('title')}' from daily plan",
+                user_id=user_id,
+                metadata={
+                    "task_title": task_data.get("title"),
+                    "spam_reason": task_data.get("spam_reason"),
+                    "spam_score": task_data.get("spam_score"),
+                },
+            )
+            continue
+        
         # Check if this is a reminder (Google Calendar reminders have eventType or are very short events)
         raw_data = task_data.get("raw_data", {})
         event_type = raw_data.get("eventType", "default")
@@ -919,11 +1153,12 @@ async def run_planning_workflow(user_id: str, plan_date: date, energy_level: Opt
     # Log filtering results
     StructuredLogger.log_event(
         "planning_tasks_filtered",
-        f"Filtered tasks: {len(raw_tasks)} included, {skipped_previous_day} from wrong day, {len(reminders)} reminders collected",
+        f"Filtered tasks: {len(raw_tasks)} included, {skipped_previous_day} from wrong day, {skipped_spam} spam filtered, {len(reminders)} reminders collected",
         user_id=user_id,
         metadata={
             "included_count": len(raw_tasks),
             "skipped_previous_day": skipped_previous_day,
+            "skipped_spam": skipped_spam,
             "reminders_count": len(reminders),
         }
     )

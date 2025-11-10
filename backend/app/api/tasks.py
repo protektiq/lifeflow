@@ -44,22 +44,46 @@ async def get_raw_tasks(
         
         tasks = []
         for task_data in response.data:
+            # Parse sync fields
+            last_synced_at = None
+            if task_data.get("last_synced_at"):
+                try:
+                    last_synced_at = datetime.fromisoformat(task_data["last_synced_at"].replace("Z", "+00:00"))
+                except (ValueError, TypeError):
+                    pass
+            
+            external_updated_at = None
+            if task_data.get("external_updated_at"):
+                try:
+                    external_updated_at = datetime.fromisoformat(task_data["external_updated_at"].replace("Z", "+00:00"))
+                except (ValueError, TypeError):
+                    pass
+            
             tasks.append(RawTaskResponse(
-            id=task_data["id"],
-            user_id=task_data["user_id"],
-            source=task_data["source"],
-            title=task_data["title"],
-            description=task_data.get("description"),
-            start_time=datetime.fromisoformat(task_data["start_time"].replace("Z", "+00:00")),
-            end_time=datetime.fromisoformat(task_data["end_time"].replace("Z", "+00:00")),
-            attendees=task_data.get("attendees", []),
-            location=task_data.get("location"),
-            recurrence_pattern=task_data.get("recurrence_pattern"),
-            extracted_priority=task_data.get("extracted_priority"),
-            is_critical=task_data.get("is_critical", False),
-            is_urgent=task_data.get("is_urgent", False),
-            created_at=datetime.fromisoformat(task_data["created_at"].replace("Z", "+00:00")),
-        ))
+                id=task_data["id"],
+                user_id=task_data["user_id"],
+                source=task_data["source"],
+                title=task_data["title"],
+                description=task_data.get("description"),
+                start_time=datetime.fromisoformat(task_data["start_time"].replace("Z", "+00:00")),
+                end_time=datetime.fromisoformat(task_data["end_time"].replace("Z", "+00:00")),
+                attendees=task_data.get("attendees", []),
+                location=task_data.get("location"),
+                recurrence_pattern=task_data.get("recurrence_pattern"),
+                extracted_priority=task_data.get("extracted_priority"),
+                is_critical=task_data.get("is_critical", False),
+                is_urgent=task_data.get("is_urgent", False),
+                is_spam=task_data.get("is_spam", False),
+                spam_reason=task_data.get("spam_reason"),
+                spam_score=task_data.get("spam_score"),
+                created_at=datetime.fromisoformat(task_data["created_at"].replace("Z", "+00:00")),
+                external_id=task_data.get("external_id"),
+                sync_status=task_data.get("sync_status"),
+                last_synced_at=last_synced_at,
+                sync_direction=task_data.get("sync_direction"),
+                external_updated_at=external_updated_at,
+                sync_error=task_data.get("sync_error"),
+            ))
         
         return tasks
     except Exception as e:
@@ -85,6 +109,22 @@ async def get_raw_task(
             )
         
         task_data = response.data[0]
+        
+        # Parse sync fields
+        last_synced_at = None
+        if task_data.get("last_synced_at"):
+            try:
+                last_synced_at = datetime.fromisoformat(task_data["last_synced_at"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass
+        
+        external_updated_at = None
+        if task_data.get("external_updated_at"):
+            try:
+                external_updated_at = datetime.fromisoformat(task_data["external_updated_at"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass
+        
         return RawTaskResponse(
             id=task_data["id"],
             user_id=task_data["user_id"],
@@ -99,7 +139,16 @@ async def get_raw_task(
             extracted_priority=task_data.get("extracted_priority"),
             is_critical=task_data.get("is_critical", False),
             is_urgent=task_data.get("is_urgent", False),
+            is_spam=task_data.get("is_spam", False),
+            spam_reason=task_data.get("spam_reason"),
+            spam_score=task_data.get("spam_score"),
             created_at=datetime.fromisoformat(task_data["created_at"].replace("Z", "+00:00")),
+            external_id=task_data.get("external_id"),
+            sync_status=task_data.get("sync_status"),
+            last_synced_at=last_synced_at,
+            sync_direction=task_data.get("sync_direction"),
+            external_updated_at=external_updated_at,
+            sync_error=task_data.get("sync_error"),
         )
     except HTTPException:
         raise
@@ -114,6 +163,8 @@ class TaskFlagsUpdate(BaseModel):
     """Task flags update model"""
     is_critical: Optional[bool] = None
     is_urgent: Optional[bool] = None
+    is_spam: Optional[bool] = None
+    extracted_priority: Optional[str] = None
 
 
 @router.patch("/raw/{task_id}", response_model=RawTaskResponse)
@@ -141,6 +192,21 @@ async def update_task_flags(
             update_data["is_critical"] = flags.is_critical
         if flags.is_urgent is not None:
             update_data["is_urgent"] = flags.is_urgent
+        if flags.is_spam is not None:
+            update_data["is_spam"] = flags.is_spam
+            # If marking as not spam, clear spam reason and score
+            if not flags.is_spam:
+                update_data["spam_reason"] = None
+                update_data["spam_score"] = None
+        if flags.extracted_priority is not None:
+            # Validate priority value
+            valid_priorities = ["high", "medium", "low", "normal"]
+            if flags.extracted_priority not in valid_priorities:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid priority. Must be one of: {', '.join(valid_priorities)}",
+                )
+            update_data["extracted_priority"] = flags.extracted_priority
         
         if not update_data:
             raise HTTPException(

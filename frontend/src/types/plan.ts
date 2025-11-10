@@ -6,6 +6,8 @@ export interface DailyPlanTask {
   title: string
   is_critical: boolean
   is_urgent: boolean
+  action_plan?: string[] | null  // List of actionable steps to complete the task
+  description?: string | null  // Original task description for context
 }
 
 export interface DailyPlan {

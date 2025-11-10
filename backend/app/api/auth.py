@@ -15,8 +15,11 @@ import secrets
 
 router = APIRouter()
 
-# Google OAuth flow
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+# Google OAuth flow - includes Calendar and Gmail read-only scopes
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly'
+]
 CLIENT_SECRETS_FILE = None  # We'll use client ID/secret from env
 
 
@@ -267,5 +270,142 @@ def get_current_user(token: str):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
+        )
+
+
+@router.get("/todoist/connect")
+async def todoist_connect(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())
+):
+    """Initiate Todoist OAuth flow - requires authentication"""
+    try:
+        # Get authenticated user
+        user = get_current_user(credentials.credentials)
+        user_id = user.id
+        
+        if not settings.TODOIST_CLIENT_ID:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Todoist OAuth not configured"
+            )
+        
+        # Generate state with user_id
+        import base64
+        encoded_user_id = base64.urlsafe_b64encode(user_id.encode()).decode()
+        state = secrets.token_urlsafe(32)
+        state_with_user = f"{state}:{encoded_user_id}"
+        
+        # Build authorization URL
+        auth_url = (
+            f"https://todoist.com/oauth/authorize"
+            f"?client_id={settings.TODOIST_CLIENT_ID}"
+            f"&scope=task:add,data:read_write,data:delete"
+            f"&state={state_with_user}"
+        )
+        
+        return {"url": auth_url, "state": state_with_user}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication required: {str(e)}"
+        )
+
+
+@router.get("/todoist/callback")
+async def todoist_callback(code: str, state: Optional[str] = None):
+    """Handle Todoist OAuth callback"""
+    try:
+        if not settings.TODOIST_CLIENT_ID or not settings.TODOIST_CLIENT_SECRET:
+            return RedirectResponse(
+                url=f"{settings.CORS_ORIGINS[0]}/dashboard?error=todoist_not_configured"
+            )
+        
+        # Extract user_id from state
+        user_id = None
+        if state and ':' in state:
+            parts = state.split(':', 1)
+            if len(parts) == 2:
+                import base64
+                try:
+                    user_id = base64.urlsafe_b64decode(parts[1].encode()).decode()
+                except Exception:
+                    pass
+        
+        if not user_id:
+            return RedirectResponse(
+                url=f"{settings.CORS_ORIGINS[0]}/dashboard?error=user_id_required_please_reconnect"
+            )
+        
+        # Exchange authorization code for access token
+        token_url = "https://todoist.com/oauth/access_token"
+        token_data = {
+            "client_id": settings.TODOIST_CLIENT_ID,
+            "client_secret": settings.TODOIST_CLIENT_SECRET,
+            "code": code,
+        }
+        
+        import requests
+        token_response = requests.post(token_url, data=token_data, timeout=30)
+        
+        if token_response.status_code != 200:
+            return RedirectResponse(
+                url=f"{settings.CORS_ORIGINS[0]}/dashboard?error=todoist_token_exchange_failed"
+            )
+        
+        token_json = token_response.json()
+        access_token = token_json.get("access_token")
+        
+        if not access_token:
+            return RedirectResponse(
+                url=f"{settings.CORS_ORIGINS[0]}/dashboard?error=todoist_no_access_token"
+            )
+        
+        # Store OAuth tokens
+        from app.agents.perception.task_manager_integration import store_todoist_tokens
+        
+        try:
+            await store_todoist_tokens(
+                user_id=user_id,
+                access_token=access_token,
+            )
+        except Exception as storage_error:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to store Todoist OAuth tokens: {str(storage_error)}")
+            return RedirectResponse(
+                url=f"{settings.CORS_ORIGINS[0]}/dashboard?error=token_storage_failed"
+            )
+        
+        return RedirectResponse(
+            url=f"{settings.CORS_ORIGINS[0]}/dashboard?todoist_connected=true"
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Todoist OAuth callback error: {str(e)}")
+        return RedirectResponse(
+            url=f"{settings.CORS_ORIGINS[0]}/dashboard?error={str(e)}"
+        )
+
+
+@router.delete("/todoist/disconnect")
+async def todoist_disconnect(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())
+):
+    """Disconnect Todoist integration"""
+    try:
+        user = get_current_user(credentials.credentials)
+        user_id = user.id
+        
+        # Delete OAuth tokens
+        supabase.table("oauth_tokens").delete().eq(
+            "user_id", user_id
+        ).eq("provider", "todoist").execute()
+        
+        return {"success": True, "message": "Todoist disconnected successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to disconnect Todoist: {str(e)}"
         )
 

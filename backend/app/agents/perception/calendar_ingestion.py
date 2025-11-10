@@ -8,7 +8,11 @@ from app.database import supabase
 from app.utils.monitoring import StructuredLogger, error_handler
 import json
 
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+# Google OAuth scopes - includes Calendar and Gmail read-only scopes
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly'
+]
 
 
 class CalendarIngestionError(Exception):
@@ -35,12 +39,14 @@ async def get_user_credentials(user_id: str) -> Optional[Credentials]:
         token_data = response.data[0]
         
         # Create credentials object
+        # Use client_id and client_secret from settings (not stored in DB for security)
+        from app.config import settings
         credentials = Credentials(
             token=token_data["access_token"],
             refresh_token=token_data.get("refresh_token"),
             token_uri="https://oauth2.googleapis.com/token",
-            client_id=token_data.get("client_id"),
-            client_secret=token_data.get("client_secret"),
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET,
             scopes=SCOPES,
         )
         

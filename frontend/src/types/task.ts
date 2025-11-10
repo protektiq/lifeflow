@@ -12,7 +12,17 @@ export interface RawTask {
   extracted_priority: string | null
   is_critical: boolean
   is_urgent: boolean
+  is_spam: boolean
+  spam_reason: string | null
+  spam_score: number | null
   created_at: string
+  // Sync tracking fields
+  external_id?: string | null
+  sync_status?: string | null
+  last_synced_at?: string | null
+  sync_direction?: string | null
+  external_updated_at?: string | null
+  sync_error?: string | null
 }
 
 export interface RawTaskCreate {

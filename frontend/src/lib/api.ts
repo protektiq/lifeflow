@@ -98,13 +98,23 @@ class ApiClient {
     return response.data
   }
 
+  async syncEmail() {
+    const response = await this.client.post('/api/ingestion/email/sync')
+    return response.data
+  }
+
   // Task endpoints
   async getRawTasks(params?: { start_date?: string; end_date?: string }) {
     const response = await this.client.get('/api/tasks/raw', { params })
     return response.data
   }
 
-  async updateTaskFlags(taskId: string, flags: { is_critical?: boolean; is_urgent?: boolean }) {
+  async getRawTask(taskId: string) {
+    const response = await this.client.get(`/api/tasks/raw/${taskId}`)
+    return response.data
+  }
+
+  async updateTaskFlags(taskId: string, flags: { is_critical?: boolean; is_urgent?: boolean; is_spam?: boolean; extracted_priority?: string }) {
     const response = await this.client.patch(`/api/tasks/raw/${taskId}`, flags)
     return response.data
   }
@@ -206,6 +216,35 @@ class ApiClient {
 
   async convertReminderToTask(reminderId: string) {
     const response = await this.client.post(`/api/reminders/${reminderId}/convert-to-task`)
+    return response.data
+  }
+
+  // Task Manager endpoints
+  async connectTodoist() {
+    const response = await this.client.get('/api/auth/todoist/connect')
+    return response.data
+  }
+
+  async syncTodoist() {
+    const response = await this.client.post('/api/task-manager/todoist/sync')
+    return response.data
+  }
+
+  async getTodoistStatus() {
+    const response = await this.client.get('/api/task-manager/todoist/status')
+    return response.data
+  }
+
+  async resolveConflict(taskId: string, resolution: 'local' | 'external') {
+    const response = await this.client.post('/api/task-manager/todoist/resolve-conflict', {
+      task_id: taskId,
+      resolution,
+    })
+    return response.data
+  }
+
+  async disconnectTodoist() {
+    const response = await this.client.delete('/api/auth/todoist/disconnect')
     return response.data
   }
 

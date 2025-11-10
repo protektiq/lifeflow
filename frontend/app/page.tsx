@@ -14,7 +14,12 @@ import {
   Clock,
   BarChart3,
   Users,
-  Rocket
+  Rocket,
+  Linkedin,
+  Briefcase,
+  GraduationCap,
+  Home as HomeIcon,
+  UserCog
 } from 'lucide-react'
 
 export default function Home() {
@@ -75,7 +80,6 @@ export default function Home() {
           <div className={`space-y-6 sm:space-y-8 ${visibleSections.has('hero') ? 'animate-fade-in-up' : 'opacity-0'}`}>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[12rem] font-bold leading-none tracking-tight relative">
               <span className="hero-gradient-text inline-block relative z-10" data-text="LifeFlow">LifeFlow</span>
-              <span className="hero-gradient-text-outline absolute inset-0 inline-block" aria-hidden="true">LifeFlow</span>
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 font-medium max-w-3xl mx-auto leading-relaxed px-2">
               Transform your to-do list into a <span className="font-bold text-white">done list</span> with AI-powered task management
@@ -83,10 +87,10 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center pt-4 px-2">
               <Link
                 href="/auth/register"
-                className="group relative w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white text-purple-600 font-bold text-base sm:text-lg rounded-full overflow-hidden transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-pink-500/50 focus:outline-none focus:ring-4 focus:ring-white/50"
+                className="group relative w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white text-purple-600 font-bold text-base sm:text-lg rounded-full overflow-hidden transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-white/50"
                 aria-label="Get started with LifeFlow"
               >
-                <span className="relative z-10 flex items-center gap-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
+                <span className="relative z-10 flex items-center justify-center gap-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
                   Get Started Free
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
@@ -168,7 +172,7 @@ export default function Home() {
               return (
                 <div
                   key={index}
-                  className={`group relative p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-gray-100 ${
+                  className={`group relative p-8 bg-white rounded-2xl transition-all duration-300 hover:scale-105 border border-gray-100 ${
                     isVisible ? 'animate-scale-in' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${feature.delay}ms` }}
@@ -250,10 +254,10 @@ export default function Home() {
                     <div className="text-center">
                       <div className="relative inline-flex items-center justify-center mb-6">
                         <div className="absolute w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full opacity-20 animate-pulse"></div>
-                        <div className="relative w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                        <div className="relative w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
                           {step.number}
                         </div>
-                        <div className="absolute -top-2 -right-2 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-purple-200">
+                        <div className="absolute -top-2 -right-2 w-12 h-12 bg-white rounded-full flex items-center justify-center border-2 border-purple-200">
                           <Icon className="w-6 h-6 text-purple-600" />
                         </div>
                       </div>
@@ -314,7 +318,7 @@ export default function Home() {
               return (
                 <div
                   key={index}
-                  className={`text-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 hover:shadow-xl transition-all duration-300 hover:scale-105 ${
+                  className={`text-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 transition-all duration-300 hover:scale-105 ${
                     isVisible ? 'animate-scale-in' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 100}ms` }}
@@ -357,6 +361,115 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Target Personas Section */}
+      <section 
+        className="relative py-24 sm:py-32 bg-gradient-to-b from-white to-gray-50"
+        data-section-id="personas"
+        ref={setSectionRef('personas')}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={`text-center mb-12 sm:mb-16 ${visibleSections.has('personas') ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
+              <span className="gradient-text">Built for You</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+              LifeFlow adapts to your unique needs, no matter your role or lifestyle
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
+            {[
+              {
+                icon: Briefcase,
+                persona: 'Busy Professionals',
+                description: 'Executives, managers, and professionals juggling packed calendars and multiple priorities',
+                benefits: [
+                  'Automatically extract actionable tasks from meetings and events',
+                  'Never miss a deadline with AI-powered priority detection',
+                  'Optimize your day based on your energy levels',
+                  'Reduce mental overhead with intelligent task organization'
+                ],
+                gradient: 'from-blue-500 to-cyan-500'
+              },
+              {
+                icon: UserCog,
+                persona: 'Entrepreneurs & Freelancers',
+                description: 'Self-starters managing multiple clients, projects, and deadlines independently',
+                benefits: [
+                  'Sync all your client meetings and deadlines in one place',
+                  'Get personalized daily plans that maximize productivity',
+                  'Track progress across all your projects effortlessly',
+                  'Focus on high-impact work with smart priority management'
+                ],
+                gradient: 'from-purple-500 to-pink-500'
+              },
+              {
+                icon: GraduationCap,
+                persona: 'Students',
+                description: 'Learners balancing classes, assignments, exams, and extracurricular activities',
+                benefits: [
+                  'Extract tasks and deadlines from class schedules automatically',
+                  'Plan study sessions around your energy and focus levels',
+                  'Never forget an assignment with intelligent reminders',
+                  'Achieve better work-life balance with optimized scheduling'
+                ],
+                gradient: 'from-green-500 to-emerald-500'
+              },
+              {
+                icon: HomeIcon,
+                persona: 'Remote Workers',
+                description: 'Professionals working from home, managing work-life boundaries and multiple priorities',
+                benefits: [
+                  'Maintain clear boundaries between work and personal time',
+                  'Optimize your schedule based on when you work best',
+                  'Reduce context switching with intelligent task grouping',
+                  'Stay organized without the overwhelm of manual planning'
+                ],
+                gradient: 'from-orange-500 to-red-500'
+              }
+            ].map((persona, index) => {
+              const Icon = persona.icon
+              const isVisible = visibleSections.has('personas')
+              return (
+                <div
+                  key={index}
+                  className={`group relative p-8 bg-white rounded-2xl border border-gray-200 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
+                    isVisible ? 'animate-scale-in' : 'opacity-0'
+                  }`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${persona.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-2xl`}></div>
+                  <div className="relative z-10">
+                    <div className={`w-16 h-16 bg-gradient-to-br ${persona.gradient} rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                      <Icon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className={`text-2xl font-bold mb-2 text-gray-900 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r ${persona.gradient} transition-all duration-300`}>
+                      {persona.persona}
+                    </h3>
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      {persona.description}
+                    </p>
+                    <div className="space-y-3">
+                      {persona.benefits.map((benefit, benefitIndex) => (
+                        <div
+                          key={benefitIndex}
+                          className="flex items-start space-x-3"
+                        >
+                          <div className={`flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br ${persona.gradient} flex items-center justify-center mt-0.5`}>
+                            <CheckCircle2 className="w-3 h-3 text-white" />
+                          </div>
+                          <span className="text-gray-700 leading-relaxed">{benefit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section 
         className="relative py-24 sm:py-32 overflow-hidden"
@@ -383,10 +496,10 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center pt-4 px-2">
               <Link
                 href="/auth/register"
-                className="group relative w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 bg-white text-purple-600 font-bold text-lg sm:text-xl rounded-full overflow-hidden transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-white/50 focus:outline-none focus:ring-4 focus:ring-white/50"
+                className="group relative w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 bg-white text-purple-600 font-bold text-lg sm:text-xl rounded-full overflow-hidden transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-white/50"
                 aria-label="Get started with LifeFlow"
               >
-                <span className="relative z-10 flex items-center gap-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
+                <span className="relative z-10 flex items-center justify-center gap-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300">
                   Get Started Free
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
@@ -417,6 +530,16 @@ export default function Home() {
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>AI-Powered</span>
               </div>
+              <a
+                href="https://www.linkedin.com/in/lvcarlosja/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-white transition-colors duration-300"
+                aria-label="Visit Carlos LinkedIn profile"
+              >
+                <Linkedin className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>LinkedIn</span>
+              </a>
             </div>
           </div>
         </div>

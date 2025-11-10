@@ -1,11 +1,11 @@
 """LLM Planner for daily adaptive scheduling"""
 from typing import List, Dict, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from uuid import UUID
 from openai import OpenAI
 from app.config import settings
 from app.models.plan import DailyPlan, DailyPlanTask, PlanningContext
-from app.agents.cognition.reinforcement import score_task_fit
+from app.agents.cognition.reinforcement import score_task_fit, _get_priority_score
 from app.agents.cognition.learning import analyze_snooze_patterns, adjust_scheduling
 from app.utils.monitoring import StructuredLogger
 import json
@@ -144,11 +144,13 @@ def generate_daily_plan(context: PlanningContext) -> DailyPlan:
 4. Critical/urgent flags that override normal scheduling
 
 Your goal is to create a realistic, executable daily plan that:
+- INCLUDES ALL tasks provided (do not filter or exclude any tasks)
 - Places critical tasks early in the day regardless of energy level
 - Matches task complexity to user's energy level when possible
 - Respects hard time constraints (start_time, end_time from calendar)
 - Provides realistic time estimates for each task
 - Accounts for breaks and transitions between tasks
+- Tasks with "normal" priority should still be included in the plan
 
 IMPORTANT: 
 - All predicted_start and predicted_end times MUST be on the plan_date specified. 
@@ -166,10 +168,19 @@ Return a JSON object with this exact structure:
       "priority_score": 0.0-1.0,
       "title": "task title",
       "is_critical": boolean,
-      "is_urgent": boolean
+      "is_urgent": boolean,
+      "action_plan": ["step 1", "step 2", "step 3"]  // List of 3-7 actionable steps to complete this task
     }
   ]
 }
+
+IMPORTANT for action_plan:
+- Break down each task into concrete, actionable steps
+- Steps should be specific and executable (e.g., "Draft outline of proposal sections" not "Work on proposal")
+- Include 3-7 steps depending on task complexity
+- Steps should be ordered logically (first step first)
+- For simple tasks, fewer steps are fine (e.g., "Review proposal" might have 2-3 steps)
+- For complex tasks, break them down more (e.g., "Build proposal deck" should have 5-7 steps)
 
 Ensure predicted_start and predicted_end are on the plan_date and respect the original task's time constraints.
 Tasks should be ordered chronologically by predicted_start."""
@@ -266,8 +277,12 @@ Tasks should be ordered chronologically by predicted_start."""
     plan_tasks = []
     from datetime import timezone, timedelta, time as dt_time
     
-    # Create a map of task_id to is_all_day flag for quick lookup
+    # Create a map of task_id to task info for quick lookup
+    task_map = {str(task.get("id")): task for task in context.raw_tasks}
     task_all_day_map = {task.get("id"): task.get("is_all_day", False) for task in context.raw_tasks}
+    
+    # Track which tasks were included in the plan
+    included_task_ids = set()
     
     for task_data in plan_data.get("tasks", []):
         task_id = task_data.get("task_id")
@@ -281,6 +296,12 @@ Tasks should be ordered chronologically by predicted_start."""
             # Set to start and end of plan_date in UTC
             predicted_start = datetime.combine(context.plan_date, dt_time.min).replace(tzinfo=timezone.utc)
             predicted_end = datetime.combine(context.plan_date, dt_time.max).replace(tzinfo=timezone.utc)
+            
+            # Get action plan and description from LLM response or original task
+            task_id_str = str(task_id)
+            action_plan = task_data.get("action_plan", [])
+            description = task_map.get(task_id_str, {}).get("description")
+            
             # Use the adjusted times
             plan_tasks.append(DailyPlanTask(
                 task_id=task_id,
@@ -289,8 +310,11 @@ Tasks should be ordered chronologically by predicted_start."""
                 priority_score=float(task_data.get("priority_score", 0.5)),
                 title=task_data.get("title", ""),
                 is_critical=task_data.get("is_critical", False),
-                is_urgent=task_data.get("is_urgent", False)
+                is_urgent=task_data.get("is_urgent", False),
+                action_plan=action_plan if action_plan else None,
+                description=description
             ))
+            included_task_ids.add(task_id_str)
             continue
         
         # Calculate duration before any adjustments
@@ -332,6 +356,17 @@ Tasks should be ordered chronologically by predicted_start."""
             predicted_start = original_predicted_start
             predicted_end = original_predicted_end
         
+        # Get action plan and description from LLM response or original task
+        task_id_str = str(task_data["task_id"])
+        action_plan = task_data.get("action_plan", [])
+        description = task_map.get(task_id_str, {}).get("description")
+        original_task = task_map.get(task_id_str, {})
+        
+        # If LLM didn't provide action plan, generate one
+        if not action_plan or len(action_plan) == 0:
+            user_id_for_logging = str(context.raw_tasks[0]["user_id"]) if context.raw_tasks else None
+            action_plan = _generate_action_plan_for_task(original_task, user_id_for_logging)
+        
         plan_tasks.append(DailyPlanTask(
             task_id=task_data["task_id"],
             predicted_start=predicted_start,
@@ -339,8 +374,74 @@ Tasks should be ordered chronologically by predicted_start."""
             priority_score=float(task_data.get("priority_score", 0.5)),
             title=task_data.get("title", ""),
             is_critical=task_data.get("is_critical", False),
-            is_urgent=task_data.get("is_urgent", False)
+            is_urgent=task_data.get("is_urgent", False),
+            action_plan=action_plan if action_plan else None,
+            description=description
         ))
+        
+        included_task_ids.add(task_id_str)
+    
+    # Validate that all tasks were included
+    missing_tasks = []
+    for task_id, task in task_map.items():
+        if task_id not in included_task_ids:
+            missing_tasks.append({
+                "id": task_id,
+                "title": task.get("title", "Unknown"),
+                "priority": task.get("extracted_priority", "normal"),
+            })
+    
+    if missing_tasks:
+        StructuredLogger.log_event(
+            "planner_missing_tasks",
+            f"LLM excluded {len(missing_tasks)} tasks from plan",
+            user_id=str(context.raw_tasks[0]["user_id"]) if context.raw_tasks else "unknown",
+            metadata={
+                "plan_date": context.plan_date.isoformat(),
+                "missing_tasks": missing_tasks,
+                "total_tasks": len(context.raw_tasks),
+                "included_tasks": len(included_task_ids),
+            },
+            level="WARNING"
+        )
+        
+        # Add missing tasks with default scheduling (preserve original times)
+        for missing_task_info in missing_tasks:
+            task_id = missing_task_info["id"]
+            original_task = task_map[task_id]
+            
+            # Use original start/end times, adjusted to plan_date if needed
+            original_start = datetime.fromisoformat(original_task["start_time"].replace("Z", "+00:00"))
+            original_end = datetime.fromisoformat(original_task["end_time"].replace("Z", "+00:00"))
+            
+            # Adjust to plan_date if needed
+            if original_start.date() != context.plan_date:
+                # Preserve time of day, move to plan_date
+                time_part = original_start.time()
+                predicted_start = datetime.combine(context.plan_date, time_part).replace(tzinfo=timezone.utc)
+                duration = original_end - original_start
+                predicted_end = predicted_start + duration
+            else:
+                predicted_start = original_start
+                predicted_end = original_end
+            
+            # Calculate priority score for missing task
+            priority_score = _get_priority_score(original_task.get("extracted_priority"))
+            
+            # Generate action plan for missing task (LLM didn't include it, so generate one)
+            action_plan = _generate_action_plan_for_task(original_task, user_id)
+            
+            plan_tasks.append(DailyPlanTask(
+                task_id=task_id,
+                predicted_start=predicted_start,
+                predicted_end=predicted_end,
+                priority_score=priority_score,
+                title=original_task.get("title", "Unknown"),
+                is_critical=original_task.get("is_critical", False),
+                is_urgent=original_task.get("is_urgent", False),
+                action_plan=action_plan,
+                description=original_task.get("description")
+            ))
     
     # Get user_id from first task, convert to UUID if string
     user_id = None
@@ -384,7 +485,13 @@ def _build_planning_prompt(context: PlanningContext, scored_tasks: List[Dict]) -
         ])
         
         if task.get("description"):
-            task_info.append(f"   Description: {task.get('description')[:200]}")
+            task_info.append(f"   Description: {task.get('description')[:500]}")  # Increased to 500 for better context
+        
+        # Include context that might help with breaking down the task
+        if task.get("attendees"):
+            task_info.append(f"   Context: This task involves {len(task.get('attendees', []))} attendee(s)")
+        if task.get("location"):
+            task_info.append(f"   Context: Location: {task.get('location')}")
         
         if task.get("is_critical"):
             task_info.append("   ⚠️ CRITICAL - Must be scheduled early")
@@ -404,9 +511,110 @@ def _build_planning_prompt(context: PlanningContext, scored_tasks: List[Dict]) -
         prompt_parts.append(f"\nGlobal Time Constraints: {json.dumps(context.time_constraints)}")
     
     prompt_parts.append(
-        "\nCreate a daily plan that respects time constraints, prioritizes critical/urgent tasks, "
-        "and matches task complexity to the user's energy level when possible."
+        "\nIMPORTANT: Include ALL tasks in your plan. Do not exclude any tasks, even if they have 'normal' priority. "
+        "Create a daily plan that respects time constraints, prioritizes critical/urgent tasks, "
+        "and matches task complexity to the user's energy level when possible. "
+        "Every task provided must appear in the final plan."
     )
     
     return "\n".join(prompt_parts)
+
+
+def _generate_action_plan_for_task(task: Dict, user_id: Optional[str] = None) -> List[str]:
+    """
+    Generate actionable steps for a task using ChatGPT
+    This is called when LLM planner doesn't include action_plan or for missing tasks
+    
+    Args:
+        task: Task dictionary with title, description, etc.
+        user_id: Optional user ID for logging
+        
+    Returns:
+        List of actionable steps (3-7 steps)
+    """
+    try:
+        title = task.get("title", "Unknown Task")
+        description = task.get("description", "") or ""
+        duration_minutes = 0
+        
+        # Calculate duration if times are available
+        if task.get("start_time") and task.get("end_time"):
+            try:
+                start = datetime.fromisoformat(task.get("start_time").replace("Z", "+00:00"))
+                end = datetime.fromisoformat(task.get("end_time").replace("Z", "+00:00"))
+                duration_minutes = int((end - start).total_seconds() / 60)
+            except:
+                pass
+        
+        system_prompt = """You are an expert at breaking down tasks into actionable steps.
+Given a task title and description, create a concrete action plan with 3-7 specific, executable steps.
+Each step should be:
+- Specific and actionable (e.g., "Draft outline with 3 main sections" not "Work on outline")
+- Ordered logically (first step first)
+- Appropriate for the task complexity and time available
+- Clear enough that someone could execute it immediately
+
+Return a JSON object with an "action_plan" array of step strings."""
+        
+        user_prompt = f"""Task: {title}
+Description: {description[:500] if description else "No description provided"}
+Estimated Duration: {duration_minutes} minutes
+
+Break this task down into 3-7 actionable steps. Return JSON with:
+{{
+  "action_plan": ["step 1", "step 2", "step 3", ...]
+}}"""
+        
+        try:
+            response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.5,
+                response_format={"type": "json_object"}
+            )
+        except Exception:
+            # Fallback to gpt-3.5-turbo
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.5,
+                response_format={"type": "json_object"}
+            )
+        
+        result = json.loads(response.choices[0].message.content)
+        action_plan = result.get("action_plan", [])
+        
+        # Ensure we have at least some steps
+        if not action_plan or len(action_plan) == 0:
+            # Fallback to simple steps
+            action_plan = [
+                f"Review the task: {title}",
+                "Gather necessary information and resources",
+                "Execute the task",
+                "Review and finalize"
+            ]
+        
+        return action_plan[:7]  # Limit to 7 steps max
+        
+    except Exception as e:
+        StructuredLogger.log_event(
+            "action_plan_generation_failed",
+            f"Failed to generate action plan for task: {task.get('title', 'Unknown')}",
+            user_id=user_id or "unknown",
+            metadata={"error": str(e), "task_title": task.get("title")},
+            level="WARNING"
+        )
+        # Return simple fallback steps
+        return [
+            f"Review: {task.get('title', 'Task')}",
+            "Gather necessary information",
+            "Complete the task"
+        ]
+
 
