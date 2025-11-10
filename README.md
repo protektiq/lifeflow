@@ -19,6 +19,7 @@ LifeFlow acts as your personal executive function assistant, helping you:
 - 📊 **Track Progress** - Monitor your task completion and calendar sync metrics
 - 💬 **Provide Feedback** - Help the system learn your preferences and improve over time
 - 🧠 **Context Learning** - System learns from your behavior patterns and preferences
+- 🔗 **Task Manager Integration** - Bidirectional sync with external task managers (Todoist)
 
 ---
 
@@ -291,9 +292,12 @@ cd lifeflow
    - Run migrations in order:
      - `supabase/migrations/001_initial_schema.sql` - Core tables (user_profiles, oauth_tokens, raw_tasks)
      - `supabase/migrations/002_phase2_schema.sql` - Daily plans and energy levels
+     - `supabase/migrations/002_task_manager_sync.sql` - Task manager sync support
+     - `supabase/migrations/002_add_spam_fields.sql` - Spam detection fields (if applicable)
      - `supabase/migrations/003_phase3_notifications.sql` - Notifications and reminders
      - `supabase/migrations/004_get_user_email_function.sql` - Email lookup function
    - Execute each migration sequentially
+   - See [supabase/README.md](supabase/README.md) for detailed migration instructions
 
 3. **Configure authentication:**
    - Enable Email provider in Supabase Auth settings
@@ -396,15 +400,23 @@ lifeflow/
 │   └── tests/           # Backend tests
 ├── frontend/             # Next.js frontend
 │   ├── app/             # App Router pages
-│   │   ├── auth/        # Authentication pages
-│   │   └── dashboard/   # Main dashboard page
+│   │   ├── auth/        # Authentication pages (login, signup)
+│   │   └── dashboard/   # Dashboard pages
+│   │       ├── page.tsx # Main dashboard (Today's Plan)
+│   │       ├── integrations/ # Calendar and task manager integrations
+│   │       ├── planning/ # Planning history
+│   │       ├── data/    # Data/metrics page
+│   │       └── notifications/ # Notifications page
 │   ├── components/      # React components
+│   │   ├── ui/         # Radix UI components (shadcn/ui)
 │   │   ├── DailyPlanView.tsx
 │   │   ├── EnergyLevelInput.tsx
 │   │   ├── NotificationCenter.tsx
 │   │   ├── RawTasksView.tsx
 │   │   ├── RemindersView.tsx
-│   │   └── TaskFeedback.tsx
+│   │   ├── TaskFeedback.tsx
+│   │   ├── TaskManagerIntegration.tsx
+│   │   └── DashboardSidebar.tsx
 │   ├── src/
 │   │   ├── lib/         # API clients and utilities
 │   │   └── types/       # TypeScript type definitions
@@ -413,6 +425,8 @@ lifeflow/
     └── migrations/
         ├── 001_initial_schema.sql
         ├── 002_phase2_schema.sql
+        ├── 002_task_manager_sync.sql
+        ├── 002_add_spam_fields.sql
         ├── 003_phase3_notifications.sql
         └── 004_get_user_email_function.sql
 ```
@@ -484,6 +498,12 @@ npm test
 - ✅ **Smart Nudging** - Micro-nudges sent when tasks are due to start
 - ✅ **Reminders System** - View and manage task reminders
 - ✅ **Notification Management** - Dismiss and track notification history
+
+### Task Manager Integration ✅
+- ✅ **Todoist Integration** - Connect and sync with Todoist
+- ✅ **Bidirectional Sync** - Sync tasks both ways between LifeFlow and Todoist
+- ✅ **Conflict Resolution** - Resolve sync conflicts between systems
+- ✅ **Sync Status Tracking** - Monitor sync status and errors
 
 ---
 
