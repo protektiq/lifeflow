@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { apiClient } from '@/src/lib/api'
-import { DailyPlan, EnergyLevel } from '@/src/types/plan'
+import { DailyPlan, EnergyLevel, Reminder } from '@/src/types/plan'
 import EnergyLevelInput from '@/components/EnergyLevelInput'
 import DailyPlanView from '@/components/DailyPlanView'
+import RemindersView from '@/components/RemindersView'
 
 export const dynamic = 'force-dynamic'
 
-export default function DashboardPage() {
+export default function PlanningPage() {
   const [dailyPlan, setDailyPlan] = useState<DailyPlan | null>(null)
   const [planLoading, setPlanLoading] = useState(false)
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel | null>(null)
+  const [reminders, setReminders] = useState<Reminder[]>([])
+  const [remindersLoading, setRemindersLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   // Get today's date in local timezone
@@ -26,6 +29,7 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDailyPlan()
     loadEnergyLevel()
+    loadReminders()
   }, [])
 
   const loadDailyPlan = async () => {
@@ -50,17 +54,36 @@ export default function DashboardPage() {
     }
   }
 
+  const loadReminders = async () => {
+    try {
+      setRemindersLoading(true)
+      const remindersData = await apiClient.getRemindersForDate(today)
+      setReminders(Array.isArray(remindersData) ? remindersData : [])
+    } catch (err) {
+      console.log('Error loading reminders:', err)
+      setReminders([])
+    } finally {
+      setRemindersLoading(false)
+    }
+  }
+
   const handleGeneratePlan = async () => {
     try {
       setPlanLoading(true)
       setError(null)
       await apiClient.generatePlan(today)
       await loadDailyPlan()
+      await loadReminders()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to generate plan')
     } finally {
       setPlanLoading(false)
     }
+  }
+
+  const handleReminderConverted = async () => {
+    await loadReminders()
+    await loadDailyPlan()
   }
 
   const handleEnergyLevelSaved = () => {
@@ -70,19 +93,9 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Header Row with Energy Level Card */}
-      <div className="mb-6 flex flex-col lg:flex-row lg:items-stretch gap-4 lg:gap-6">
-        <div className="flex flex-col justify-center max-w-md shrink-0">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4">Today's Plan</h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">Set your energy level and view your personalized daily plan</p>
-        </div>
-        <div className="flex-1 min-w-0">
-          <EnergyLevelInput
-            date={today}
-            initialEnergyLevel={energyLevel?.energy_level}
-            onSuccess={handleEnergyLevelSaved}
-          />
-        </div>
+      <div className="mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">Planning</h2>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Manage your daily plan, energy levels, and reminders</p>
       </div>
 
       {error && (
@@ -91,8 +104,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Full Width Daily Plan Card */}
-      <div className="w-full">
+      <div className="mb-6 grid gap-4 sm:gap-6 md:grid-cols-2">
+        <EnergyLevelInput
+          date={today}
+          initialEnergyLevel={energyLevel?.energy_level}
+          onSuccess={handleEnergyLevelSaved}
+        />
         <DailyPlanView
           plan={dailyPlan}
           onRegenerate={handleGeneratePlan}
@@ -101,6 +118,16 @@ export default function DashboardPage() {
           onTaskUpdated={loadDailyPlan}
         />
       </div>
+
+      <div className="mb-6">
+        <RemindersView
+          reminders={reminders}
+          loading={remindersLoading}
+          expectedDate={today}
+          onReminderConverted={handleReminderConverted}
+        />
+      </div>
     </div>
   )
 }
+

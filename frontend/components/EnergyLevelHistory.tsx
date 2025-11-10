@@ -94,27 +94,27 @@ export default function EnergyLevelHistory({ onClose }: EnergyLevelHistoryProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="rounded-2xl bg-white shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-2xl dark:shadow-gray-900/50 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b-2 border-purple-200 p-4 sm:p-6 flex items-start justify-between">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700 p-4 sm:p-6 flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Energy Level History
             </h2>
             {energyLevels.length > 0 && (
               <div className="flex items-center gap-4 text-sm">
-                <span className="text-gray-600">
-                  Average: <span className="font-bold text-purple-600">{averageLevel.toFixed(1)}/5</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Average: <span className="font-bold text-purple-600 dark:text-purple-400">{averageLevel.toFixed(1)}/5</span>
                 </span>
-                <span className="text-gray-600">
-                  Total Entries: <span className="font-bold text-gray-900">{energyLevels.length}</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Total Entries: <span className="font-bold text-gray-900 dark:text-gray-100">{energyLevels.length}</span>
                 </span>
               </div>
             )}
           </div>
           <button
             onClick={onClose}
-            className="ml-4 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            className="ml-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
             aria-label="Close"
           >
             <X className="h-6 w-6" />
@@ -125,11 +125,11 @@ export default function EnergyLevelHistory({ onClose }: EnergyLevelHistoryProps)
         <div className="p-4 sm:p-6 space-y-4">
           {/* Date Range Filter */}
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
+            <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as 'week' | 'month' | 'all')}
-              className="rounded-xl border-2 border-purple-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
+              className="rounded-xl border-2 border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 focus:border-purple-500 dark:focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
             >
               <option value="week">Last Week</option>
               <option value="month">Last Month</option>
@@ -139,14 +139,14 @@ export default function EnergyLevelHistory({ onClose }: EnergyLevelHistoryProps)
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
             </div>
           ) : error ? (
-            <div className="rounded-xl bg-red-50 border-2 border-red-200 p-4 text-red-800">
+            <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 p-4 text-red-800 dark:text-red-300">
               {error}
             </div>
           ) : sortedLevels.length === 0 ? (
-            <div className="py-12 text-center text-gray-600">
+            <div className="py-12 text-center text-gray-600 dark:text-gray-400">
               <p className="text-lg font-medium mb-2">No energy levels recorded</p>
               <p className="text-sm">Start tracking your energy levels to see your history here.</p>
             </div>
@@ -159,7 +159,7 @@ export default function EnergyLevelHistory({ onClose }: EnergyLevelHistoryProps)
                 return (
                   <div
                     key={level.id}
-                    className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg"
+                    className="rounded-xl border-2 border-purple-200 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
@@ -168,26 +168,26 @@ export default function EnergyLevelHistory({ onClose }: EnergyLevelHistoryProps)
                             {level.energy_level}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                               {getEnergyLevelLabel(level.energy_level)}
                             </p>
-                            <p className="text-xs text-gray-600">{formatDate(level.date)}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">{formatDate(level.date)}</p>
                           </div>
                           {trend && (
                             <div className="ml-auto">
                               {trend === 'up' && (
-                                <TrendingUp className="h-5 w-5 text-green-600" />
+                                <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                               )}
                               {trend === 'down' && (
-                                <TrendingDown className="h-5 w-5 text-red-600" />
+                                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
                               )}
                               {trend === 'same' && (
-                                <Minus className="h-5 w-5 text-gray-400" />
+                                <Minus className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                               )}
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                           <span>Created: {new Date(level.created_at).toLocaleDateString()}</span>
                           {level.updated_at !== level.created_at && (
                             <span>Updated: {new Date(level.updated_at).toLocaleDateString()}</span>
@@ -203,7 +203,7 @@ export default function EnergyLevelHistory({ onClose }: EnergyLevelHistoryProps)
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t-2 border-purple-200 p-4 sm:p-6">
+        <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t-2 border-purple-200 dark:border-purple-700 p-4 sm:p-6">
           <button
             onClick={onClose}
             className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50"

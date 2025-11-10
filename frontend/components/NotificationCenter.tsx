@@ -108,35 +108,39 @@ export default function NotificationCenter({
   }
 
   const getNotificationColor = (type: string, isCritical?: boolean, isUrgent?: boolean) => {
-    if (isCritical) return 'border-red-500 bg-red-50'
-    if (isUrgent) return 'border-orange-500 bg-orange-50'
-    return 'border-blue-500 bg-blue-50'
+    if (isCritical) return 'border-red-500 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+    if (isUrgent) return 'border-orange-500 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/20'
+    return 'border-blue-500 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20'
   }
 
   const pendingNotifications = notifications.filter((n) => n.status === 'pending' || n.status === 'sent')
   const dismissedNotifications = notifications.filter((n) => n.status === 'dismissed')
   const displayedNotifications = showAll ? notifications : pendingNotifications
+  
+  // Extract critical/urgent flags for selected notification detail view
+  const detailIsCritical = selectedNotification?.message.includes('CRITICAL') ?? false
+  const detailIsUrgent = selectedNotification?.message.includes('URGENT') ?? false
 
   if (loading && notifications.length === 0) {
     return (
-      <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-lg animate-scale-in">
+      <div className="rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 animate-scale-in">
         <div className="flex items-center justify-center py-4">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+          <div className="h-6 w-6 animate-spin rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="group relative rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       <div className="relative z-10">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <h3 className="text-lg sm:text-xl font-bold mb-1">
               <span className="gradient-text">Notifications</span>
             </h3>
-            <p className="text-sm sm:text-base text-gray-700">
+            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">
               {pendingNotifications.length} pending
               {dismissedNotifications.length > 0 && ` • ${dismissedNotifications.length} dismissed`}
             </p>
@@ -144,7 +148,7 @@ export default function NotificationCenter({
           {dismissedNotifications.length > 0 && (
             <button
               onClick={() => setShowAll(!showAll)}
-              className="px-4 py-2 border-2 border-purple-300 text-purple-700 font-semibold text-xs sm:text-sm rounded-full backdrop-blur-sm transition-all duration-300 hover:border-purple-500 hover:bg-purple-50 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
+              className="px-4 py-2 border-2 border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 font-semibold text-xs sm:text-sm rounded-full backdrop-blur-sm transition-all duration-300 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
             >
               {showAll ? 'Show Pending' : 'Show All'}
             </button>
@@ -152,22 +156,20 @@ export default function NotificationCenter({
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl bg-red-50 border-2 border-red-200 p-3 text-sm font-medium text-red-800">
+          <div className="mb-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 p-3 text-sm font-medium text-red-800 dark:text-red-300">
             {error}
           </div>
         )}
 
         <div className="space-y-3 max-h-96 overflow-y-auto">
           {displayedNotifications.length === 0 ? (
-            <div className="py-6 sm:py-8 text-center text-gray-600 font-medium text-sm sm:text-base">
+            <div className="py-6 sm:py-8 text-center text-gray-600 dark:text-gray-400 font-medium text-sm sm:text-base">
               No notifications
             </div>
           ) : (
             displayedNotifications.map((notification, index) => {
               const isCritical = notification.message.includes('CRITICAL')
               const isUrgent = notification.message.includes('URGENT')
-              const detailIsCritical = selectedNotification?.message.includes('CRITICAL')
-              const detailIsUrgent = selectedNotification?.message.includes('URGENT')
               
               return (
                 <div
@@ -186,9 +188,9 @@ export default function NotificationCenter({
                       <span className="text-base sm:text-lg flex-shrink-0">
                         {getNotificationIcon(notification.type, isCritical, isUrgent)}
                       </span>
-                      <p className="text-sm sm:text-base font-medium text-gray-900 break-words">{notification.message}</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 break-words">{notification.message}</p>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-600">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-600 dark:text-gray-400">
                       <span>{formatTime(notification.scheduled_at)}</span>
                       {notification.sent_at && (
                         <span>Sent: {formatTime(notification.sent_at)}</span>
@@ -199,7 +201,7 @@ export default function NotificationCenter({
                   {notification.status !== 'dismissed' && (
                     <button
                       onClick={() => handleDismiss(notification.id)}
-                      className="w-full sm:w-auto sm:ml-4 px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold text-xs rounded-full transition-all duration-300 hover:border-gray-400 hover:bg-gray-100 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-gray-400/50"
+                      className="w-full sm:w-auto sm:ml-4 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold text-xs rounded-full transition-all duration-300 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-gray-400/50"
                       aria-label="Dismiss notification"
                     >
                       Dismiss
@@ -216,27 +218,27 @@ export default function NotificationCenter({
       {/* Notification Detail Modal */}
       {selectedNotificationId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="rounded-2xl bg-white shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-2xl dark:shadow-gray-900/50 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {loadingDetail ? (
               <div className="p-8 flex items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
               </div>
             ) : selectedNotification ? (
               <>
-                <div className="sticky top-0 bg-white border-b-2 border-purple-200 p-4 sm:p-6 flex items-start justify-between">
+                <div className="sticky top-0 bg-white dark:bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700 p-4 sm:p-6 flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-2 mb-2">
                       <span className="text-2xl flex-shrink-0">
                         {getNotificationIcon(selectedNotification.type, detailIsCritical, detailIsUrgent)}
                       </span>
-                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words">
                         Notification Details
                       </h2>
                     </div>
                   </div>
                   <button
                     onClick={handleCloseDetail}
-                    className="ml-4 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                    className="ml-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
                     aria-label="Close"
                   >
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -247,56 +249,56 @@ export default function NotificationCenter({
 
                 <div className="p-4 sm:p-6 space-y-4">
                   <div className={`rounded-lg border-2 p-4 ${getNotificationColor(selectedNotification.type, detailIsCritical, detailIsUrgent)}`}>
-                    <p className="text-base sm:text-lg font-medium text-gray-900 break-words mb-4">
+                    <p className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 break-words mb-4">
                       {selectedNotification.message}
                     </p>
                     
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">Type:</span>
-                        <span className="text-gray-600 capitalize">{selectedNotification.type}</span>
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">Type:</span>
+                        <span className="text-gray-600 dark:text-gray-400 capitalize">{selectedNotification.type}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">Status:</span>
-                        <span className="text-gray-600 capitalize">{selectedNotification.status}</span>
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">Status:</span>
+                        <span className="text-gray-600 dark:text-gray-400 capitalize">{selectedNotification.status}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">Scheduled:</span>
-                        <span className="text-gray-600">{formatDateTime(selectedNotification.scheduled_at)}</span>
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">Scheduled:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{formatDateTime(selectedNotification.scheduled_at)}</span>
                       </div>
                       {selectedNotification.sent_at && (
                         <div className="flex justify-between">
-                          <span className="font-semibold text-gray-700">Sent:</span>
-                          <span className="text-gray-600">{formatDateTime(selectedNotification.sent_at)}</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Sent:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{formatDateTime(selectedNotification.sent_at)}</span>
                         </div>
                       )}
                       {selectedNotification.task_id && (
                         <div className="flex justify-between">
-                          <span className="font-semibold text-gray-700">Task ID:</span>
-                          <span className="text-gray-600 font-mono text-xs break-all">{selectedNotification.task_id}</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Task ID:</span>
+                          <span className="text-gray-600 dark:text-gray-400 font-mono text-xs break-all">{selectedNotification.task_id}</span>
                         </div>
                       )}
                       {selectedNotification.plan_id && (
                         <div className="flex justify-between">
-                          <span className="font-semibold text-gray-700">Plan ID:</span>
-                          <span className="text-gray-600 font-mono text-xs break-all">{selectedNotification.plan_id}</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Plan ID:</span>
+                          <span className="text-gray-600 dark:text-gray-400 font-mono text-xs break-all">{selectedNotification.plan_id}</span>
                         </div>
                       )}
                       <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">Created:</span>
-                        <span className="text-gray-600">{formatDateTime(selectedNotification.created_at)}</span>
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">Created:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{formatDateTime(selectedNotification.created_at)}</span>
                       </div>
                       {selectedNotification.updated_at && (
                         <div className="flex justify-between">
-                          <span className="font-semibold text-gray-700">Updated:</span>
-                          <span className="text-gray-600">{formatDateTime(selectedNotification.updated_at)}</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Updated:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{formatDateTime(selectedNotification.updated_at)}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-white border-t-2 border-purple-200 p-4 sm:p-6">
+                <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t-2 border-purple-200 dark:border-purple-700 p-4 sm:p-6">
                   <div className="flex gap-3">
                     {selectedNotification.status !== 'dismissed' && (
                       <button
@@ -304,7 +306,7 @@ export default function NotificationCenter({
                           handleDismiss(selectedNotification.id)
                           handleCloseDetail()
                         }}
-                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-full transition-all duration-300 hover:bg-gray-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-400/50"
+                        className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-full transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-400/50"
                       >
                         Dismiss
                       </button>

@@ -114,7 +114,7 @@ export default function Home() {
 
       {/* Features Section */}
       <section 
-        className="relative py-24 sm:py-32 bg-gradient-to-b from-gray-50 to-white"
+        className="relative py-24 sm:py-32 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800"
         data-section-id="features"
         ref={setSectionRef('features')}
       >
@@ -123,7 +123,7 @@ export default function Home() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
               <span className="gradient-text">Powerful Features</span>
             </h2>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
               Everything you need to master your productivity
             </p>
           </div>
@@ -172,20 +172,20 @@ export default function Home() {
               return (
                 <div
                   key={index}
-                  className={`group relative p-8 bg-white rounded-2xl transition-all duration-300 hover:scale-105 border border-gray-100 ${
+                  className={`group relative p-8 bg-white dark:bg-gray-800 rounded-2xl transition-all duration-300 hover:scale-105 border border-gray-100 dark:border-gray-700 ${
                     isVisible ? 'animate-scale-in' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${feature.delay}ms` }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="relative z-10">
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                       <Icon className="w-8 h-8 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-3 text-gray-900 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
+                    <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-gray-100 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
                       {feature.title}
                     </h3>
-                    <p className="text-gray-600 leading-relaxed">
+                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                       {feature.description}
                     </p>
                   </div>
@@ -198,7 +198,7 @@ export default function Home() {
 
       {/* How It Works Section */}
       <section 
-        className="relative py-24 sm:py-32 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50"
+        className="relative py-24 sm:py-32 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"
         data-section-id="how-it-works"
         ref={setSectionRef('how-it-works')}
       >
@@ -207,14 +207,14 @@ export default function Home() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
               <span className="gradient-text">How It Works</span>
             </h2>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
               Get started in minutes, transform your productivity forever
             </p>
           </div>
 
           <div className="relative">
             {/* Connecting line (hidden on mobile) */}
-            <div className="hidden lg:block absolute top-24 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 opacity-20"></div>
+            <div className="hidden lg:block absolute top-24 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 opacity-20 dark:opacity-30"></div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4">
               {[
@@ -253,18 +253,18 @@ export default function Home() {
                   >
                     <div className="text-center">
                       <div className="relative inline-flex items-center justify-center mb-6">
-                        <div className="absolute w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full opacity-20 animate-pulse"></div>
+                        <div className="absolute w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full opacity-20 dark:opacity-30 animate-pulse"></div>
                         <div className="relative w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
                           {step.number}
                         </div>
-                        <div className="absolute -top-2 -right-2 w-12 h-12 bg-white rounded-full flex items-center justify-center border-2 border-purple-200">
-                          <Icon className="w-6 h-6 text-purple-600" />
+                        <div className="absolute -top-2 -right-2 w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-2 border-purple-200 dark:border-purple-600">
+                          <Icon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                         </div>
                       </div>
-                      <h3 className="text-xl font-bold mb-2 text-gray-900">
+                      <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">
                         {step.title}
                       </h3>
-                      <p className="text-gray-600">
+                      <p className="text-gray-600 dark:text-gray-400">
                         {step.description}
                       </p>
                     </div>
@@ -278,7 +278,7 @@ export default function Home() {
 
       {/* Benefits Section */}
       <section 
-        className="relative py-24 sm:py-32 bg-white"
+        className="relative py-24 sm:py-32 bg-white dark:bg-gray-900"
         data-section-id="benefits"
         ref={setSectionRef('benefits')}
       >
@@ -287,7 +287,7 @@ export default function Home() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
               <span className="gradient-text">Why LifeFlow?</span>
             </h2>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
               Join thousands who've transformed their productivity
             </p>
           </div>
@@ -318,7 +318,7 @@ export default function Home() {
               return (
                 <div
                   key={index}
-                  className={`text-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 transition-all duration-300 hover:scale-105 ${
+                  className={`text-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl border border-purple-100 dark:border-purple-800 transition-all duration-300 hover:scale-105 ${
                     isVisible ? 'animate-scale-in' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 100}ms` }}
@@ -329,10 +329,10 @@ export default function Home() {
                   <div className="text-5xl font-bold gradient-text mb-2">
                     {benefit.stat}
                   </div>
-                  <div className="text-xl font-bold text-gray-900 mb-2">
+                  <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
                     {benefit.label}
                   </div>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-gray-400">
                     {benefit.description}
                   </p>
                 </div>
@@ -351,10 +351,10 @@ export default function Home() {
             ].map((benefit, index) => (
               <div
                 key={index}
-                className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300"
+                className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/30 dark:hover:to-pink-900/30 transition-all duration-300"
               >
-                <CheckCircle2 className="w-6 h-6 text-purple-600 flex-shrink-0" />
-                <span className="text-lg text-gray-900 font-medium">{benefit}</span>
+                <CheckCircle2 className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                <span className="text-lg text-gray-900 dark:text-gray-100 font-medium">{benefit}</span>
               </div>
             ))}
           </div>
@@ -363,7 +363,7 @@ export default function Home() {
 
       {/* Target Personas Section */}
       <section 
-        className="relative py-24 sm:py-32 bg-gradient-to-b from-white to-gray-50"
+        className="relative py-24 sm:py-32 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800"
         data-section-id="personas"
         ref={setSectionRef('personas')}
       >
@@ -372,7 +372,7 @@ export default function Home() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 px-4">
               <span className="gradient-text">Built for You</span>
             </h2>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
               LifeFlow adapts to your unique needs, no matter your role or lifestyle
             </p>
           </div>
@@ -433,20 +433,20 @@ export default function Home() {
               return (
                 <div
                   key={index}
-                  className={`group relative p-8 bg-white rounded-2xl border border-gray-200 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
+                  className={`group relative p-8 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
                     isVisible ? 'animate-scale-in' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${persona.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-2xl`}></div>
+                  <div className={`absolute inset-0 bg-gradient-to-br ${persona.gradient} opacity-0 group-hover:opacity-5 dark:group-hover:opacity-10 transition-opacity duration-300 rounded-2xl`}></div>
                   <div className="relative z-10">
                     <div className={`w-16 h-16 bg-gradient-to-br ${persona.gradient} rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
                       <Icon className="w-8 h-8 text-white" />
                     </div>
-                    <h3 className={`text-2xl font-bold mb-2 text-gray-900 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r ${persona.gradient} transition-all duration-300`}>
+                    <h3 className={`text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r ${persona.gradient} transition-all duration-300`}>
                       {persona.persona}
                     </h3>
-                    <p className="text-gray-600 mb-6 leading-relaxed">
+                    <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
                       {persona.description}
                     </p>
                     <div className="space-y-3">
@@ -458,7 +458,7 @@ export default function Home() {
                           <div className={`flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br ${persona.gradient} flex items-center justify-center mt-0.5`}>
                             <CheckCircle2 className="w-3 h-3 text-white" />
                           </div>
-                          <span className="text-gray-700 leading-relaxed">{benefit}</span>
+                          <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{benefit}</span>
                         </div>
                       ))}
                     </div>

@@ -59,9 +59,9 @@ export default function RemindersView({
 
   if (loading) {
     return (
-      <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-lg animate-scale-in">
+      <div className="rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 animate-scale-in">
         <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
         </div>
       </div>
     )
@@ -74,15 +74,15 @@ export default function RemindersView({
   })
 
   return (
-    <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="group relative rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       <div className="relative z-10">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h3 className="text-lg sm:text-xl font-bold mb-1">
               <span className="gradient-text">Reminders</span>
             </h3>
-            <p className="text-sm sm:text-base text-gray-700">
+            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">
               {expectedDate ? formatDate(expectedDate) : 'Today'}
             </p>
           </div>
@@ -95,14 +95,14 @@ export default function RemindersView({
             return (
               <div
                 key={reminder.id}
-                className="rounded-xl border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-5 shadow-md transition-all duration-300 hover:shadow-lg animate-scale-in"
+                className="rounded-xl border-2 border-purple-300 dark:border-purple-600 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 p-4 sm:p-5 shadow-md transition-all duration-300 hover:shadow-lg animate-scale-in"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <svg
-                      className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 flex-shrink-0"
+                      className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -115,12 +115,12 @@ export default function RemindersView({
                         d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                       />
                     </svg>
-                    <h4 className="text-sm sm:text-base font-bold text-gray-900 break-words">{reminder.title}</h4>
+                    <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 break-words">{reminder.title}</h4>
                     <span className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-bold text-white whitespace-nowrap shadow-md">
                       Reminder
                     </span>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                     {reminder.is_all_day ? (
                       <span>All day</span>
                     ) : (
@@ -130,7 +130,7 @@ export default function RemindersView({
                     )}
                   </div>
                   {reminder.description && (
-                    <p className="mt-2 text-xs sm:text-sm text-gray-600 break-words">{reminder.description}</p>
+                    <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">{reminder.description}</p>
                   )}
                 </div>
                 <div className="w-full sm:w-auto sm:ml-4 flex justify-start sm:justify-end">
@@ -149,7 +149,7 @@ export default function RemindersView({
       </div>
 
         {sortedReminders.length === 0 && (
-          <div className="py-8 text-center text-gray-600 font-medium">No reminders for this day</div>
+          <div className="py-8 text-center text-gray-600 dark:text-gray-400 font-medium">No reminders for this day</div>
         )}
       </div>
     </div>

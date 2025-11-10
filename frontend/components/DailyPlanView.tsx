@@ -27,9 +27,9 @@ export default function DailyPlanView({
   const [updatingStatus, setUpdatingStatus] = useState(false)
   if (loading) {
     return (
-      <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-lg animate-scale-in">
+      <div className="rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 animate-scale-in">
         <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
         </div>
       </div>
     )
@@ -37,10 +37,10 @@ export default function DailyPlanView({
 
   if (!plan) {
     return (
-      <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="group relative rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         <div className="relative z-10 text-center py-8">
-          <p className="text-gray-700 mb-4">
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
             No plan generated for {expectedDate ? new Date(expectedDate).toLocaleDateString() : 'today'}
           </p>
           {onRegenerate && (
@@ -89,13 +89,13 @@ export default function DailyPlanView({
   console.log('DailyPlanView - datesMatch:', datesMatch, 'Will show mismatch UI:', expectedDate && !datesMatch)
   if (expectedDate && !datesMatch) {
     return (
-      <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="group relative rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         <div className="relative z-10 text-center py-8">
-          <p className="text-gray-700 mb-4">
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
             Plan shown is for {formatDate(planDateStr)}, but today is {formatDate(expectedDate)}
           </p>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Plan date: {planDateStr} | Expected: {expectedDate}
           </p>
           {onRegenerate ? (
@@ -212,8 +212,8 @@ export default function DailyPlanView({
   })
 
   return (
-    <div className="group relative rounded-2xl bg-white p-6 sm:p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="group relative rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-lg dark:shadow-gray-900/50 transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-scale-in">
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       <div className="relative z-10">
         {/* Header Row: Title and History */}
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -223,7 +223,7 @@ export default function DailyPlanView({
             </h3>
             <button
               onClick={() => setShowHistory(true)}
-              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-purple-700 bg-purple-100 rounded-full border-2 border-purple-300 transition-all duration-300 hover:bg-purple-200 hover:border-purple-400 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
+              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 rounded-full border-2 border-purple-300 dark:border-purple-600 transition-all duration-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 hover:border-purple-400 dark:hover:border-purple-500 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-purple-500/50"
               aria-label="View plans history"
             >
               <History className="h-3 w-3" />
@@ -242,20 +242,20 @@ export default function DailyPlanView({
 
         {/* Second Row: Date and Status Controls */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-sm sm:text-base text-gray-700">
+          <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">
             {formatDate(planDateStr)}
           </p>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             {plan.energy_level && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700 font-medium">Energy:</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Energy:</span>
                 <div
                   className={`rounded-full px-3 py-1.5 text-sm font-bold border-2 ${
                     plan.energy_level <= 2
-                      ? 'bg-red-100 border-red-300 text-red-700'
+                      ? 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-700 dark:text-red-300'
                       : plan.energy_level === 3
-                      ? 'bg-yellow-100 border-yellow-300 text-yellow-700'
-                      : 'bg-green-100 border-green-300 text-green-700'
+                      ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-600 text-yellow-700 dark:text-yellow-300'
+                      : 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-700 dark:text-green-300'
                   }`}
                 >
                   {plan.energy_level}/5
@@ -263,7 +263,7 @@ export default function DailyPlanView({
               </div>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-700 font-medium">Status:</span>
+              <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Status:</span>
               <select
                 value={plan.status}
                 onChange={async (e) => {
@@ -278,7 +278,7 @@ export default function DailyPlanView({
                   }
                 }}
                 disabled={updatingStatus}
-                className="rounded-full px-3 py-1.5 text-sm font-bold border-2 bg-white border-purple-300 text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-full px-3 py-1.5 text-sm font-bold border-2 bg-white dark:bg-gray-800 border-purple-300 dark:border-purple-600 text-gray-700 dark:text-gray-300 focus:border-purple-500 dark:focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
@@ -299,19 +299,19 @@ export default function DailyPlanView({
               key={`${task.task_id}-${index}`}
               className={`rounded-xl border-2 p-4 sm:p-5 transition-all duration-300 hover:shadow-lg animate-scale-in ${
                 isDone
-                  ? 'border-gray-300 bg-gray-100 opacity-75'
+                  ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 opacity-75'
                   : task.is_critical
-                  ? 'border-red-400 bg-gradient-to-br from-red-50 to-pink-50 shadow-md'
+                  ? 'border-red-400 dark:border-red-600 bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/30 dark:to-pink-900/30 shadow-md'
                   : task.is_urgent
-                  ? 'border-orange-400 bg-gradient-to-br from-orange-50 to-yellow-50 shadow-md'
-                  : 'border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50'
+                  ? 'border-orange-400 dark:border-orange-600 bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-900/30 dark:to-yellow-900/30 shadow-md'
+                  : 'border-purple-200 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20'
               }`}
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h4 className={`text-sm sm:text-base font-medium break-words ${isDone ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                    <h4 className={`text-sm sm:text-base font-medium break-words ${isDone ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
                       {task.title}
                     </h4>
                     {isDone && (
@@ -335,7 +335,7 @@ export default function DailyPlanView({
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                     <span>
                       {formatTime(task.predicted_start)} - {formatTime(task.predicted_end)}
                     </span>
@@ -344,11 +344,11 @@ export default function DailyPlanView({
                   
                   {/* Display action plan steps if available */}
                   {task.action_plan && task.action_plan.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="text-xs font-semibold text-gray-700 mb-2">Action Plan:</div>
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Action Plan:</div>
                       <ol className="space-y-1.5">
                         {task.action_plan.map((step, stepIndex) => (
-                          <li key={stepIndex} className="flex items-start gap-2 text-xs text-gray-600">
+                          <li key={stepIndex} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 text-white flex items-center justify-center text-[10px] font-bold mt-0.5">
                               {stepIndex + 1}
                             </span>
@@ -382,7 +382,7 @@ export default function DailyPlanView({
       </div>
 
         {sortedTasks.length === 0 && (
-          <div className="py-8 text-center text-gray-600 font-medium">No tasks scheduled for this day</div>
+          <div className="py-8 text-center text-gray-600 dark:text-gray-400 font-medium">No tasks scheduled for this day</div>
         )}
       </div>
 

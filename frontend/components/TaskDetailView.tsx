@@ -89,8 +89,8 @@ export default function TaskDetailView({
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="rounded-2xl bg-white p-8 shadow-2xl">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+        <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-2xl dark:shadow-gray-900/50">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
         </div>
       </div>
     )
@@ -99,21 +99,21 @@ export default function TaskDetailView({
   if (error || !task) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-2xl max-w-md w-full mx-4">
+        <div className="rounded-2xl bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-2xl dark:shadow-gray-900/50 max-w-md w-full mx-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Error</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Error</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               aria-label="Close"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
-          <p className="text-red-600 mb-4">{error || 'Task not found'}</p>
+          <p className="text-red-600 dark:text-red-400 mb-4">{error || 'Task not found'}</p>
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 bg-purple-600 text-white rounded-full font-semibold hover:bg-purple-700 transition-colors"
+            className="w-full px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-full font-semibold hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
           >
             Close
           </button>
@@ -124,11 +124,11 @@ export default function TaskDetailView({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="rounded-2xl bg-white shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-2xl dark:shadow-gray-900/50 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b-2 border-purple-200 p-4 sm:p-6 flex items-start justify-between">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b-2 border-purple-200 dark:border-purple-700 p-4 sm:p-6 flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 break-words">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 break-words">
               {task.title}
             </h2>
             <div className="flex flex-wrap items-center gap-2">
@@ -212,37 +212,37 @@ export default function TaskDetailView({
 
             {task.description && (
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Description</p>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{task.description}</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{task.description}</p>
               </div>
             )}
 
             {task.recurrence_pattern && (
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Recurrence</p>
-                <p className="text-sm text-gray-600">{task.recurrence_pattern}</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Recurrence</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{task.recurrence_pattern}</p>
               </div>
             )}
 
             {task.spam_reason && (
-              <div className="rounded-lg bg-red-50 border-2 border-red-200 p-3">
-                <p className="text-sm font-semibold text-red-700 mb-1">Spam Reason</p>
-                <p className="text-sm text-red-600">{task.spam_reason}</p>
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 p-3">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Spam Reason</p>
+                <p className="text-sm text-red-600 dark:text-red-400">{task.spam_reason}</p>
                 {task.spam_score !== null && (
-                  <p className="text-xs text-red-500 mt-1">Score: {task.spam_score}</p>
+                  <p className="text-xs text-red-500 dark:text-red-400 mt-1">Score: {task.spam_score}</p>
                 )}
               </div>
             )}
 
             {/* Sync Status */}
             {(task.sync_status || task.external_id) && (
-              <div className="rounded-lg bg-blue-50 border-2 border-blue-200 p-3">
-                <p className="text-sm font-semibold text-blue-700 mb-2">Sync Status</p>
-                <div className="space-y-1 text-sm text-blue-600">
+              <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 p-3">
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">Sync Status</p>
+                <div className="space-y-1 text-sm text-blue-600 dark:text-blue-400">
                   {task.sync_status && <p>Status: <span className="font-medium capitalize">{task.sync_status}</span></p>}
                   {task.external_id && <p>External ID: <span className="font-mono text-xs">{task.external_id}</span></p>}
                   {task.last_synced_at && <p>Last Synced: {formatDateTime(task.last_synced_at)}</p>}
-                  {task.sync_error && <p className="text-red-600">Error: {task.sync_error}</p>}
+                  {task.sync_error && <p className="text-red-600 dark:text-red-400">Error: {task.sync_error}</p>}
                 </div>
               </div>
             )}
@@ -250,38 +250,38 @@ export default function TaskDetailView({
 
           {/* Feedback History */}
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Feedback History</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Feedback History</h3>
             {feedback.length === 0 ? (
-              <p className="text-sm text-gray-600">No feedback recorded yet.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">No feedback recorded yet.</p>
             ) : (
               <div className="space-y-3">
                 {feedback.map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4"
+                    className="rounded-lg border-2 border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 p-4"
                   >
                     <div className="flex items-start gap-3">
                       {item.action === 'done' ? (
-                        <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                       ) : (
-                        <ClockIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-gray-900 capitalize">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">
                             {item.action === 'done' ? 'Marked as Done' : 'Snoozed'}
                           </span>
                           {item.snooze_duration_minutes && (
-                            <span className="text-xs text-gray-600">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
                               ({item.snooze_duration_minutes} minutes)
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
                           {formatDateTime(item.feedback_at)}
                         </p>
                         {item.plan_id && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Plan ID: <span className="font-mono">{item.plan_id}</span>
                           </p>
                         )}
@@ -295,7 +295,7 @@ export default function TaskDetailView({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t-2 border-purple-200 p-4 sm:p-6">
+        <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t-2 border-purple-200 dark:border-purple-700 p-4 sm:p-6">
           <button
             onClick={onClose}
             className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/50 focus:outline-none focus:ring-4 focus:ring-purple-500/50"

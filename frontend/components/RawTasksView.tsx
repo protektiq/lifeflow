@@ -249,14 +249,14 @@ export default function RawTasksView({
 
   if (loading) {
     return (
-      <div className="rounded-2xl bg-white shadow-lg animate-scale-in">
-        <div className="px-6 sm:px-8 py-4 sm:py-6 border-b-2 border-purple-200">
+      <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 animate-scale-in">
+        <div className="px-6 sm:px-8 py-4 sm:py-6 border-b-2 border-purple-200 dark:border-purple-700">
           <h2 className="text-xl sm:text-2xl font-bold">
             <span className="gradient-text">Raw Tasks</span>
           </h2>
         </div>
         <div className="flex items-center justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
         </div>
       </div>
     )
@@ -265,17 +265,17 @@ export default function RawTasksView({
   const sortedDateKeys = Object.keys(groupedTasks).sort()
 
   return (
-    <div className="group relative rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-2xl animate-scale-in">
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="group relative rounded-2xl bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 transition-all duration-300 hover:shadow-2xl animate-scale-in">
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-blue-500/10 dark:from-purple-500/20 dark:to-blue-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       <div className="relative z-10">
         {/* Header */}
-        <div className="px-6 sm:px-8 py-4 sm:py-6 border-b-2 border-purple-200">
+        <div className="px-6 sm:px-8 py-4 sm:py-6 border-b-2 border-purple-200 dark:border-purple-700">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold mb-1">
                 <span className="gradient-text">Raw Tasks</span>
               </h2>
-              <p className="text-sm sm:text-base text-gray-700 font-medium">
+              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 font-medium">
                 {filteredAndSortedTasks.length} of {tasks.length} task{tasks.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -283,13 +283,13 @@ export default function RawTasksView({
 
           {/* Search Bar */}
           <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-purple-400" />
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-purple-400 dark:text-purple-500" />
             <input
               type="text"
               placeholder="Search tasks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border-2 border-purple-200 bg-white py-3 pl-12 pr-4 text-sm placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
+              className="w-full rounded-xl border-2 border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 py-3 pl-12 pr-4 text-sm placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100 focus:border-purple-500 dark:focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
             />
           </div>
 
@@ -297,13 +297,13 @@ export default function RawTasksView({
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
           {/* Filter Chips */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <Filter className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
             <button
               onClick={() => setShowCritical(!showCritical)}
               className={`rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 hover:scale-110 ${
                 showCritical
                   ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-2 border-gray-300 dark:border-gray-600'
               }`}
             >
               Critical
@@ -313,7 +313,7 @@ export default function RawTasksView({
               className={`rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 hover:scale-110 ${
                 showUrgent
                   ? 'bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-2 border-gray-300 dark:border-gray-600'
               }`}
             >
               Urgent
@@ -322,11 +322,11 @@ export default function RawTasksView({
 
           {/* Date Range Filter */}
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRangeFilter)}
-              className="flex-1 sm:flex-none rounded-xl border-2 border-purple-200 bg-white px-3 sm:px-4 py-2 text-xs font-semibold text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
+              className="flex-1 sm:flex-none rounded-xl border-2 border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 px-3 sm:px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 focus:border-purple-500 dark:focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>
@@ -340,7 +340,7 @@ export default function RawTasksView({
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as SortOption)}
-              className="flex-1 sm:flex-none rounded-xl border-2 border-purple-200 bg-white px-3 sm:px-4 py-2 text-xs font-semibold text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
+              className="flex-1 sm:flex-none rounded-xl border-2 border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 px-3 sm:px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 focus:border-purple-500 dark:focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
             >
               <option value="date-asc">Date (Oldest First)</option>
               <option value="date-desc">Date (Newest First)</option>
@@ -354,7 +354,7 @@ export default function RawTasksView({
       {/* Tasks List */}
       <div>
           {filteredAndSortedTasks.length === 0 ? (
-            <div className="px-6 sm:px-8 py-8 sm:py-12 text-center text-gray-600">
+            <div className="px-6 sm:px-8 py-8 sm:py-12 text-center text-gray-600 dark:text-gray-400">
               {tasks.length === 0 ? (
                 <>
                   <p className="text-sm sm:text-base font-medium">No tasks found.</p>
@@ -368,30 +368,30 @@ export default function RawTasksView({
               )}
             </div>
           ) : (
-            <div className="divide-y divide-purple-100">
+            <div className="divide-y divide-purple-100 dark:divide-purple-800">
               {sortedDateKeys.map((dateKey) => {
                 const dateTasks = groupedTasks[dateKey]
                 const isCollapsed = collapsedDates.has(dateKey)
                 const firstTask = dateTasks[0]
 
                 return (
-                  <div key={dateKey} className="bg-gradient-to-br from-purple-50/50 to-blue-50/50">
+                  <div key={dateKey} className="bg-gradient-to-br from-purple-50/50 to-blue-50/50 dark:from-purple-900/20 dark:to-blue-900/20">
                     {/* Date Header */}
                     <button
                       onClick={() => toggleDateCollapse(dateKey)}
-                      className="w-full px-6 sm:px-8 py-3 sm:py-4 flex items-center justify-between hover:bg-purple-100/50 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-purple-500/50 rounded-lg"
+                      className="w-full px-6 sm:px-8 py-3 sm:py-4 flex items-center justify-between hover:bg-purple-100/50 dark:hover:bg-purple-900/30 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-purple-500/50 rounded-lg"
                     >
                       <div className="flex items-center gap-2 sm:gap-3">
                         {isCollapsed ? (
-                          <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                         )}
                         <div className="text-left">
-                          <h3 className="text-sm sm:text-base font-bold text-gray-900">
+                          <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">
                             {formatDateShort(firstTask.start_time)}
                           </h3>
-                          <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {formatDate(firstTask.start_time)} • {dateTasks.length} task{dateTasks.length !== 1 ? 's' : ''}
                           </p>
                         </div>
@@ -404,10 +404,10 @@ export default function RawTasksView({
                         {dateTasks.map((task, taskIndex) => {
                           const isExpanded = expandedTasks.has(task.id)
                           const cardBgColor = task.is_critical
-                            ? 'bg-gradient-to-br from-red-50 to-pink-50 border-red-400'
+                            ? 'bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/30 dark:to-pink-900/30 border-red-400 dark:border-red-600'
                             : task.is_urgent
-                            ? 'bg-gradient-to-br from-orange-50 to-yellow-50 border-orange-400'
-                            : 'bg-white border-purple-200'
+                            ? 'bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-900/30 dark:to-yellow-900/30 border-orange-400 dark:border-orange-600'
+                            : 'bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700'
 
                           return (
                             <div
@@ -420,7 +420,7 @@ export default function RawTasksView({
                                 <div className="flex-1 min-w-0">
                                   {/* Title and Badges */}
                                   <div className="flex items-start gap-2 flex-wrap">
-                                    <h4 className="text-xs sm:text-sm font-medium text-gray-900 flex-1 min-w-0 break-words">
+                                    <h4 className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 flex-1 min-w-0 break-words">
                                       {task.title}
                                     </h4>
                                     {task.is_critical && (
@@ -441,7 +441,7 @@ export default function RawTasksView({
                                   </div>
 
                                   {/* Time and Metadata */}
-                                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-600">
+                                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-600 dark:text-gray-400">
                                     <div className="flex items-center gap-1">
                                       <Clock className="h-3 w-3 flex-shrink-0" />
                                       <span className="whitespace-nowrap">
@@ -461,7 +461,7 @@ export default function RawTasksView({
                                       </div>
                                     )}
                                     {task.source && (
-                                      <span className="text-gray-500 hidden sm:inline">• {task.source}</span>
+                                      <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">• {task.source}</span>
                                     )}
                                   </div>
 
@@ -470,19 +470,19 @@ export default function RawTasksView({
                                     <div className="mt-2">
                                       {isExpanded ? (
                                         <div>
-                                          <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                                          <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                                             {task.description}
                                           </p>
                                           <button
                                             onClick={() => toggleTaskExpansion(task.id)}
-                                            className="mt-2 px-3 py-1 text-xs text-purple-600 hover:text-purple-700 font-bold rounded-full border-2 border-purple-300 hover:bg-purple-50 transition-all duration-300"
+                                            className="mt-2 px-3 py-1 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-bold rounded-full border-2 border-purple-300 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-300"
                                           >
                                             Show less
                                           </button>
                                         </div>
                                       ) : (
                                         <div>
-                                          <p className="text-sm text-gray-600 overflow-hidden" style={{
+                                          <p className="text-sm text-gray-600 dark:text-gray-400 overflow-hidden" style={{
                                             display: '-webkit-box',
                                             WebkitLineClamp: 2,
                                             WebkitBoxOrient: 'vertical',
@@ -493,7 +493,7 @@ export default function RawTasksView({
                                           {task.description.length > 100 && (
                                             <button
                                               onClick={() => toggleTaskExpansion(task.id)}
-                                              className="mt-2 px-3 py-1 text-xs text-purple-600 hover:text-purple-700 font-bold rounded-full border-2 border-purple-300 hover:bg-purple-50 transition-all duration-300"
+                                              className="mt-2 px-3 py-1 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-bold rounded-full border-2 border-purple-300 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-300"
                                             >
                                               Show more
                                             </button>
@@ -519,17 +519,17 @@ export default function RawTasksView({
                                       />
                                       <div
                                         className={`h-5 w-9 rounded-full transition-colors ${
-                                          task.is_critical ? 'bg-red-600' : 'bg-gray-300'
+                                          task.is_critical ? 'bg-red-600' : 'bg-gray-300 dark:bg-gray-600'
                                         }`}
                                       >
                                         <div
-                                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white dark:bg-gray-200 transition-transform ${
                                             task.is_critical ? 'translate-x-4' : ''
                                           }`}
                                         />
                                       </div>
                                     </div>
-                                    <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900 whitespace-nowrap">
+                                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 whitespace-nowrap">
                                       Critical
                                     </span>
                                   </label>
@@ -547,17 +547,17 @@ export default function RawTasksView({
                                       />
                                       <div
                                         className={`h-5 w-9 rounded-full transition-colors ${
-                                          task.is_urgent ? 'bg-orange-600' : 'bg-gray-300'
+                                          task.is_urgent ? 'bg-orange-600' : 'bg-gray-300 dark:bg-gray-600'
                                         }`}
                                       >
                                         <div
-                                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white dark:bg-gray-200 transition-transform ${
                                             task.is_urgent ? 'translate-x-4' : ''
                                           }`}
                                         />
                                       </div>
                                     </div>
-                                    <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900 whitespace-nowrap">
+                                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 whitespace-nowrap">
                                       Urgent
                                     </span>
                                   </label>

@@ -126,41 +126,41 @@ export default function TaskManagerIntegration() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">Todoist Integration</h2>
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Todoist Integration</h2>
         {status?.connected && (
-          <span className="px-3 py-1 text-sm font-medium text-green-800 bg-green-100 rounded-full">
+          <span className="px-3 py-1 text-sm font-medium text-green-800 dark:text-green-300 bg-green-100 dark:bg-green-900/30 rounded-full">
             Connected
           </span>
         )}
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-300 text-sm">
           {error}
         </div>
       )}
 
       {!status?.connected ? (
         <div>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
             Connect your Todoist account to sync tasks bidirectionally with LifeFlow.
           </p>
           <button
             onClick={handleConnect}
             disabled={connecting}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {connecting ? 'Connecting...' : 'Connect Todoist'}
           </button>
@@ -169,11 +169,11 @@ export default function TaskManagerIntegration() {
         <div>
           <div className="mb-4 space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Sync Status:</span>
+              <span className="text-gray-600 dark:text-gray-400">Sync Status:</span>
               <span className={`font-medium ${
-                status.sync_status === 'synced' ? 'text-green-600' : 
-                status.sync_status === 'conflict' ? 'text-yellow-600' : 
-                'text-gray-600'
+                status.sync_status === 'synced' ? 'text-green-600 dark:text-green-400' : 
+                status.sync_status === 'conflict' ? 'text-yellow-600 dark:text-yellow-400' : 
+                'text-gray-600 dark:text-gray-400'
               }`}>
                 {status.sync_status === 'synced' ? 'Synced' : 
                  status.sync_status === 'conflict' ? 'Conflicts' : 
@@ -183,21 +183,21 @@ export default function TaskManagerIntegration() {
             
             {status.last_sync && (
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Last Sync:</span>
-                <span className="text-gray-800">
+                <span className="text-gray-600 dark:text-gray-400">Last Sync:</span>
+                <span className="text-gray-800 dark:text-gray-200">
                   {new Date(status.last_sync).toLocaleString()}
                 </span>
               </div>
             )}
 
             {status.status_counts && Object.keys(status.status_counts).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <div className="text-sm text-gray-600 mb-2">Task Status:</div>
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Task Status:</div>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(status.status_counts).map(([statusKey, count]) => (
                     <span
                       key={statusKey}
-                      className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700"
+                      className="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       {statusKey}: {count}
                     </span>
@@ -207,13 +207,13 @@ export default function TaskManagerIntegration() {
             )}
 
             {status.conflicts_count && status.conflicts_count > 0 && (
-              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="text-sm text-yellow-800 mb-2">
+              <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <div className="text-sm text-yellow-800 dark:text-yellow-300 mb-2">
                   {status.conflicts_count} conflict{status.conflicts_count !== 1 ? 's' : ''} detected.
                 </div>
                 <button
                   onClick={handleResolveConflicts}
-                  className="px-4 py-2 bg-yellow-600 text-white text-sm font-semibold rounded hover:bg-yellow-700 transition-colors"
+                  className="px-4 py-2 bg-yellow-600 dark:bg-yellow-500 text-white text-sm font-semibold rounded hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-colors"
                 >
                   Resolve Conflicts
                 </button>
@@ -221,7 +221,7 @@ export default function TaskManagerIntegration() {
             )}
 
             {status.errors_count && status.errors_count > 0 && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-800 dark:text-red-300">
                 {status.errors_count} sync error{status.errors_count !== 1 ? 's' : ''} detected.
               </div>
             )}
@@ -231,14 +231,14 @@ export default function TaskManagerIntegration() {
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {syncing ? 'Syncing...' : 'Sync Now'}
             </button>
             <button
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {disconnecting ? 'Disconnecting...' : 'Disconnect'}
             </button>

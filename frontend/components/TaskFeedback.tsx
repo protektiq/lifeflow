@@ -83,13 +83,13 @@ export default function TaskFeedback({
           {loading ? '...' : 'Snooze'}
         </button>
         {showSnoozeMenu && (
-          <div className="absolute right-0 mt-1 w-36 sm:w-40 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+          <div className="absolute right-0 mt-1 w-36 sm:w-40 rounded-md bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10">
             <div className="py-1" role="menu">
               {snoozeOptions.map((option) => (
                 <button
                   key={option.minutes}
                   onClick={() => handleSnooze(option.minutes)}
-                  className="block w-full text-left px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+                  className="block w-full text-left px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
                   role="menuitem"
                 >
                   {option.label}
