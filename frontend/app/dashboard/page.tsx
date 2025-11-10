@@ -5,6 +5,7 @@ import { apiClient } from '@/src/lib/api'
 import { DailyPlan, EnergyLevel } from '@/src/types/plan'
 import EnergyLevelInput from '@/components/EnergyLevelInput'
 import DailyPlanView from '@/components/DailyPlanView'
+import SourceReliabilityMetrics from '@/components/SourceReliabilityMetrics'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,7 +93,7 @@ export default function DashboardPage() {
       )}
 
       {/* Full Width Daily Plan Card */}
-      <div className="w-full">
+      <div className="w-full mb-6">
         <DailyPlanView
           plan={dailyPlan}
           onRegenerate={handleGeneratePlan}
@@ -100,6 +101,11 @@ export default function DashboardPage() {
           expectedDate={today}
           onTaskUpdated={loadDailyPlan}
         />
+      </div>
+
+      {/* Source Reliability Metrics */}
+      <div className="w-full">
+        <SourceReliabilityMetrics />
       </div>
     </div>
   )

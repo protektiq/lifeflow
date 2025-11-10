@@ -33,6 +33,12 @@ class RawTask(BaseModel):
     sync_direction: Optional[str] = None
     external_updated_at: Optional[datetime] = None
     sync_error: Optional[str] = None
+    # Completion tracking fields
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
+    # Completion tracking fields
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
     
     class Config:
         json_encoders = {
@@ -65,6 +71,12 @@ class RawTaskCreate(BaseModel):
     sync_direction: Optional[str] = None
     external_updated_at: Optional[datetime] = None
     sync_error: Optional[str] = None
+    # Completion tracking fields
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
+    # Completion tracking fields
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
 
 
 class RawTaskResponse(BaseModel):
@@ -93,4 +105,7 @@ class RawTaskResponse(BaseModel):
     sync_direction: Optional[str] = None
     external_updated_at: Optional[datetime] = None
     sync_error: Optional[str] = None
+    # Completion tracking fields
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
 

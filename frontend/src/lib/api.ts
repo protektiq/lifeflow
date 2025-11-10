@@ -248,6 +248,22 @@ class ApiClient {
     return response.data
   }
 
+  // Analytics endpoints
+  async getTaskTypeMetrics(params?: { start_date?: string; end_date?: string }) {
+    const response = await this.client.get('/api/analytics/task-type-metrics', { params })
+    return response.data
+  }
+
+  async getSourceReliabilityMetrics(params?: { start_date?: string; end_date?: string }) {
+    const response = await this.client.get('/api/analytics/source-reliability', { params })
+    return response.data
+  }
+
+  async getComprehensiveAnalytics(params?: { start_date?: string; end_date?: string }) {
+    const response = await this.client.get('/api/analytics/comprehensive', { params })
+    return response.data
+  }
+
   // Health check
   async healthCheck() {
     const response = await this.client.get('/api/health')

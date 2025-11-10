@@ -14,6 +14,12 @@ router = APIRouter()
 security = HTTPBearer()
 
 
+@router.get("/test")
+async def test_feedback_router():
+    """Test endpoint to verify feedback router is registered"""
+    return {"status": "ok", "message": "Feedback router is working"}
+
+
 class TaskDoneRequest(BaseModel):
     """Request model for marking task as done"""
     plan_id: Optional[str] = None
@@ -40,9 +46,59 @@ async def get_authenticated_user(credentials: HTTPAuthorizationCredentials = Dep
 async def validate_task_belongs_to_user(task_id: str, user_id: str) -> bool:
     """Validate that task belongs to user"""
     try:
-        response = supabase.table("raw_tasks").select("id").eq("id", task_id).eq("user_id", user_id).execute()
-        return len(response.data) > 0
-    except Exception:
+        StructuredLogger.log_event(
+            "task_validation_start",
+            f"Validating task {task_id} for user {user_id}",
+            user_id=user_id,
+            metadata={"task_id": task_id},
+        )
+        response = supabase.table("raw_tasks").select("id, user_id").eq("id", task_id).execute()
+        
+        StructuredLogger.log_event(
+            "task_validation_query_result",
+            f"Query returned {len(response.data)} results",
+            user_id=user_id,
+            metadata={
+                "task_id": task_id,
+                "result_count": len(response.data),
+                "response_data": response.data if response.data else None,
+            },
+        )
+        
+        if not response.data:
+            StructuredLogger.log_event(
+                "task_validation_failed_no_data",
+                f"Task {task_id} not found in database",
+                user_id=user_id,
+                metadata={"task_id": task_id},
+                level="WARNING"
+            )
+            return False
+        
+        # Check if task belongs to user
+        task_user_id = response.data[0].get("user_id")
+        if task_user_id != user_id:
+            StructuredLogger.log_event(
+                "task_validation_failed_user_mismatch",
+                f"Task {task_id} belongs to different user. Task user: {task_user_id}, Request user: {user_id}",
+                user_id=user_id,
+                metadata={"task_id": task_id, "task_user_id": task_user_id, "request_user_id": user_id},
+                level="WARNING"
+            )
+            return False
+        
+        StructuredLogger.log_event(
+            "task_validation_success",
+            f"Task {task_id} validated successfully for user {user_id}",
+            user_id=user_id,
+            metadata={"task_id": task_id},
+        )
+        return True
+    except Exception as e:
+        StructuredLogger.log_error(
+            e,
+            context={"function": "validate_task_belongs_to_user", "task_id": task_id, "user_id": user_id},
+        )
         return False
 
 
@@ -53,9 +109,22 @@ async def mark_task_done(
     user = Depends(get_authenticated_user),
 ):
     """Mark a task as done"""
+    StructuredLogger.log_event(
+        "mark_task_done_called",
+        f"Mark task done endpoint called for task {task_id}",
+        user_id=user.id,
+        metadata={"task_id": task_id, "plan_id": request.plan_id},
+    )
     try:
         # Validate task belongs to user
-        if not await validate_task_belongs_to_user(task_id, user.id):
+        validation_result = await validate_task_belongs_to_user(task_id, user.id)
+        StructuredLogger.log_event(
+            "task_validation_result",
+            f"Task validation result: {validation_result}",
+            user_id=user.id,
+            metadata={"task_id": task_id, "validation_result": validation_result},
+        )
+        if not validation_result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found or does not belong to user",
@@ -70,15 +139,59 @@ async def mark_task_done(
             "snooze_duration_minutes": None,
         }
         
-        response = supabase.table("task_feedback").insert(feedback_data).execute()
-        
-        if not response.data:
+        try:
+            response = supabase.table("task_feedback").insert(feedback_data).execute()
+        except Exception as e:
+            StructuredLogger.log_error(
+                e,
+                context={"function": "mark_task_done", "task_id": task_id, "step": "insert_feedback"},
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create feedback record",
+                detail=f"Failed to create feedback record: {str(e)}",
+            )
+        
+        if not response.data:
+            StructuredLogger.log_event(
+                "feedback_insert_failed",
+                f"Failed to create feedback record for task {task_id}",
+                user_id=user.id,
+                metadata={"task_id": task_id, "response": str(response)},
+                level="ERROR"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create feedback record - no data returned",
             )
         
         data = response.data[0]
+        
+        # Update raw_tasks table to mark task as completed
+        # This will only work if the migration has been applied
+        try:
+            update_data = {
+                "is_completed": True,
+                "completed_at": datetime.utcnow().isoformat(),
+            }
+            update_response = supabase.table("raw_tasks").update(update_data).eq("id", task_id).eq("user_id", user.id).execute()
+            
+            # Check if update was successful (columns might not exist if migration hasn't been run)
+            if update_response.data:
+                StructuredLogger.log_event(
+                    "task_completion_updated",
+                    f"Task {task_id} marked as completed in raw_tasks",
+                    user_id=user.id,
+                    metadata={"task_id": task_id},
+                )
+        except Exception as e:
+            # Log but don't fail - migration might not be applied yet
+            StructuredLogger.log_event(
+                "task_completion_update_skipped",
+                f"Could not update raw_tasks completion status (migration may not be applied): {str(e)}",
+                user_id=user.id,
+                metadata={"task_id": task_id, "error": str(e)},
+                level="WARNING"
+            )
         
         # Update task status in daily_plans if plan_id provided
         if request.plan_id:

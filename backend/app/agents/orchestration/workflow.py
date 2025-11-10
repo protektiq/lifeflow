@@ -18,7 +18,12 @@ from app.agents.perception.email_ingestion import (
 from app.models.task import RawTaskCreate
 from app.database import supabase
 from app.utils.monitoring import StructuredLogger, track_ingestion
-from app.agents.cognition.encoding import store_task_context_embedding
+from app.agents.cognition.encoding import (
+    store_task_context_embedding,
+    store_email_snippet_embedding,
+    store_task_note_embedding,
+    store_conversation_embedding,
+)
 from app.agents.cognition.planner import generate_daily_plan
 from app.models.plan import PlanningContext
 from datetime import datetime, date, timezone, timedelta
@@ -32,6 +37,7 @@ class WorkflowState(TypedDict):
     oauth_token: Optional[str]
     calendar_events: List[dict]
     email_messages: List[dict]
+    email_messages_for_encoding: Optional[List[dict]]  # Emails kept for encoding after task creation
     email_tasks: List[RawTaskCreate]
     raw_tasks: List[RawTaskCreate]
     errors: List[str]
@@ -163,10 +169,13 @@ async def email_extraction_node(state: WorkflowState) -> WorkflowState:
         
         email_tasks = extract_raw_tasks_from_emails(emails, user_id)
         
+        # Store email messages in state for later encoding (after task creation)
+        # This allows us to link email snippets to their created tasks
         return {
             **state,
             "status": "email_extracted",
             "email_tasks": email_tasks,
+            "email_messages_for_encoding": emails,  # Keep emails for encoding after task creation
         }
     except NLPExtractionError as e:
         StructuredLogger.log_error(e, context={"user_id": user_id, "node": "email_extraction_node"})
@@ -364,8 +373,35 @@ async def storage_node(state: WorkflowState) -> WorkflowState:
                     "raw_data": raw_task.raw_data,
                 }
                 
-                supabase.table("raw_tasks").insert(task_data).execute()
+                result = supabase.table("raw_tasks").insert(task_data).execute()
                 stored_count += 1
+                
+                # Get the inserted task ID
+                inserted_task_id = None
+                if result.data and len(result.data) > 0:
+                    inserted_task_id = result.data[0].get("id")
+                
+                # Store task note/description embedding if description exists
+                if inserted_task_id and raw_task.description:
+                    try:
+                        store_task_note_embedding(
+                            user_id=user_id,
+                            task_id=str(inserted_task_id),
+                            note_text=raw_task.description,
+                            metadata={
+                                "source": raw_task.source,
+                                "title": raw_task.title,
+                            }
+                        )
+                    except Exception as e:
+                        StructuredLogger.log_event(
+                            "task_note_encoding_error",
+                            f"Failed to encode task note: {raw_task.title}",
+                            user_id=user_id,
+                            metadata={"error": str(e), "task_id": str(inserted_task_id)},
+                            level="WARNING"
+                        )
+                
             except Exception as e:
                 errors.append(f"Failed to store task '{raw_task.title}': {str(e)}")
                 StructuredLogger.log_event(
@@ -375,6 +411,105 @@ async def storage_node(state: WorkflowState) -> WorkflowState:
                     metadata={"error": str(e)},
                     level="WARNING"
                 )
+        
+        # Encode email snippets and conversations after tasks are stored
+        email_messages = state.get("email_messages_for_encoding", [])
+        if email_messages:
+            # Create a mapping of email_id to task_id for linking
+            email_to_task_map = {}
+            for raw_task in raw_tasks:
+                if raw_task.source == "gmail" and raw_task.raw_data:
+                    email_id = None
+                    if isinstance(raw_task.raw_data, dict):
+                        email_id = raw_task.raw_data.get("id") or raw_task.raw_data.get("raw_data", {}).get("id")
+                    
+                    if email_id:
+                        # Find the task in database
+                        try:
+                            task_response = supabase.table("raw_tasks").select("id").eq(
+                                "user_id", user_id
+                            ).eq("title", raw_task.title).eq(
+                                "start_time", raw_task.start_time.isoformat()
+                            ).execute()
+                            
+                            if task_response.data:
+                                task_id = task_response.data[0]["id"]
+                                email_to_task_map[str(email_id)] = str(task_id)
+                        except Exception:
+                            pass  # Skip if we can't find the task
+            
+            # Store email snippet embeddings
+            for email in email_messages:
+                try:
+                    email_id = email.get("id", "")
+                    snippet = email.get("snippet", "")
+                    thread_id = email.get("thread_id", "")
+                    
+                    if snippet and email_id:
+                        task_id = email_to_task_map.get(str(email_id), "")
+                        if task_id:  # Only store if we have a linked task
+                            store_email_snippet_embedding(
+                                user_id=user_id,
+                                task_id=task_id,
+                                email_id=email_id,
+                                snippet=snippet,
+                                thread_id=thread_id if thread_id else None,
+                            )
+                except Exception as e:
+                    StructuredLogger.log_event(
+                        "email_snippet_encoding_error",
+                        f"Failed to encode email snippet: {email.get('id', 'unknown')}",
+                        user_id=user_id,
+                        metadata={"error": str(e), "email_id": email.get("id", "unknown")},
+                        level="WARNING"
+                    )
+            
+            # Group emails by thread_id and create conversation embeddings
+            thread_groups = {}
+            for email in email_messages:
+                thread_id = email.get("thread_id", "")
+                if thread_id:
+                    if thread_id not in thread_groups:
+                        thread_groups[thread_id] = []
+                    thread_groups[thread_id].append(email)
+            
+            # Create conversation embeddings for each thread
+            for thread_id, thread_emails in thread_groups.items():
+                if len(thread_emails) > 1:  # Only create conversation embeddings for threads with multiple emails
+                    try:
+                        # Combine snippets and subjects from all emails in thread
+                        conversation_parts = []
+                        email_ids = []
+                        task_ids = []
+                        
+                        for email in thread_emails:
+                            email_id = email.get("id", "")
+                            email_ids.append(email_id)
+                            task_id = email_to_task_map.get(str(email_id), "")
+                            if task_id:
+                                task_ids.append(task_id)
+                            
+                            if email.get("snippet"):
+                                conversation_parts.append(f"Subject: {email.get('subject', '')}\n{email.get('snippet', '')}")
+                        
+                        conversation_text = "\n\n---\n\n".join(conversation_parts)
+                        
+                        if conversation_text:
+                            store_conversation_embedding(
+                                user_id=user_id,
+                                thread_id=thread_id,
+                                conversation_text=conversation_text,
+                                email_ids=email_ids if email_ids else None,
+                                task_ids=task_ids if task_ids else None,
+                            )
+                    except Exception as e:
+                        StructuredLogger.log_event(
+                            "conversation_encoding_error",
+                            f"Failed to encode conversation thread: {thread_id}",
+                            user_id=user_id,
+                            metadata={"error": str(e), "thread_id": thread_id},
+                            level="WARNING"
+                        )
         
         if errors:
             state["errors"].extend(errors)

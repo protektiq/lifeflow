@@ -59,6 +59,13 @@ async def get_raw_tasks(
                 except (ValueError, TypeError):
                     pass
             
+            completed_at = None
+            if task_data.get("completed_at"):
+                try:
+                    completed_at = datetime.fromisoformat(task_data["completed_at"].replace("Z", "+00:00"))
+                except (ValueError, TypeError):
+                    pass
+            
             tasks.append(RawTaskResponse(
                 id=task_data["id"],
                 user_id=task_data["user_id"],
@@ -83,6 +90,8 @@ async def get_raw_tasks(
                 sync_direction=task_data.get("sync_direction"),
                 external_updated_at=external_updated_at,
                 sync_error=task_data.get("sync_error"),
+                is_completed=task_data.get("is_completed", False),
+                completed_at=completed_at,
             ))
         
         return tasks
@@ -125,6 +134,13 @@ async def get_raw_task(
             except (ValueError, TypeError):
                 pass
         
+        completed_at = None
+        if task_data.get("completed_at"):
+            try:
+                completed_at = datetime.fromisoformat(task_data["completed_at"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass
+        
         return RawTaskResponse(
             id=task_data["id"],
             user_id=task_data["user_id"],
@@ -149,6 +165,8 @@ async def get_raw_task(
             sync_direction=task_data.get("sync_direction"),
             external_updated_at=external_updated_at,
             sync_error=task_data.get("sync_error"),
+            is_completed=task_data.get("is_completed", False),
+            completed_at=completed_at,
         )
     except HTTPException:
         raise

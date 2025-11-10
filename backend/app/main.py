@@ -1,11 +1,14 @@
 """FastAPI application entry point"""
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from app.config import settings
-from app.api import auth, ingestion, tasks, energy_level, plans, feedback, notifications, reminders, task_manager
+from app.api import auth, ingestion, tasks, energy_level, plans, feedback, notifications, reminders, task_manager, analytics
 from app.utils.monitoring import ingestion_metrics
 from app.utils.scheduler import start_scheduler, shutdown_scheduler
 from contextlib import asynccontextmanager
+import logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,6 +46,23 @@ app.include_router(reminders.router, prefix="/api/reminders", tags=["reminders"]
 app.include_router(feedback.router, prefix="/api/feedback", tags=["feedback"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(task_manager.router, prefix="/api/task-manager", tags=["task-manager"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+
+
+# Add exception handler for 404s to help debug routing issues
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    """Custom 404 handler to log routing issues"""
+    logging.warning(f"404 Not Found: {request.method} {request.url.path}")
+    logging.warning(f"Available routes: {[route.path for route in app.routes]}")
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "detail": f"Route not found: {request.method} {request.url.path}",
+            "path": request.url.path,
+            "method": request.method,
+        }
+    )
 
 
 @app.get("/api/health")
